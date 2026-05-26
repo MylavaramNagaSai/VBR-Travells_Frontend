@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin } from "lucide-react";
 
-const destinations = [
+const rawDestinations = [
   // --- HILL STATIONS ---
   { id: 1, name: "Ooty", category: "Hill Stations", image: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?q=80&w=600&auto=format&fit=crop" },
   { id: 2, name: "Munnar", category: "Hill Stations", image: "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?q=80&w=600&auto=format&fit=crop" },
@@ -52,6 +52,9 @@ const destinations = [
   { id: 40, name: "Pench National Park", category: "Wildlife & Safaris", image: "https://images.unsplash.com/photo-1584988716164-1cfa82d8c360?q=80&w=600&auto=format&fit=crop" },
 ];
 
+// Sort alphabetically right away
+const destinations = rawDestinations.sort((a, b) => a.name.localeCompare(b.name));
+
 const categories = ["All", "Hill Stations", "Beaches", "Heritage & Forts", "Wildlife & Safaris"];
 
 export default function TrendingDestinations() {
@@ -62,26 +65,30 @@ export default function TrendingDestinations() {
     : destinations.filter(d => d.category === activeCategory);
 
   return (
-    <div className="w-full py-16 px-4 max-w-7xl mx-auto">
+    // Matches the exact padding of the new Navbar for flawless edge alignment
+    <div className="w-full px-4 lg:px-8 py-16 flex flex-col bg-slate-50">
       
-      {/* Title and Description */}
-      <div className="text-center mb-10">
-        <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">Trending Leisure Destinations</h2>
-        <p className="text-slate-500 font-medium mt-2 max-w-xl mx-auto">
-          Explore the most breathtaking holiday spots across India. Filter by category to find your next perfect getaway.
+      {/* Title Section */}
+      <div className="text-center mb-12">
+        <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
+          Trending Leisure Destinations
+        </h2>
+        <p className="text-slate-500 font-medium mt-4 max-w-xl mx-auto">
+          Explore the most breathtaking holiday spots across India. 
+          Filter by category to find your next perfect getaway.
         </p>
       </div>
 
-      {/* Dynamic Category Filtering Buttons */}
-      <div className="flex flex-wrap justify-center gap-3 mb-10">
+      {/* Buttons */}
+      <div className="flex flex-wrap justify-center gap-2 md:gap-3 mb-12">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`relative px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all shadow-sm ${
               activeCategory === cat
-                ? "bg-slate-800 text-white shadow-md shadow-slate-300"
-                : "bg-white/60 text-slate-600 hover:text-slate-900 border border-slate-200/50 backdrop-blur-md"
+                ? "bg-slate-900 text-white shadow-lg scale-105"
+                : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
             }`}
           >
             {cat}
@@ -89,35 +96,37 @@ export default function TrendingDestinations() {
         ))}
       </div>
 
-      {/* Grid Layout containing cards */}
+      {/* Grid Layout - Up to 6/7 columns for much smaller tiles */}
       <motion.div 
         layout
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 md:gap-5"
       >
         <AnimatePresence mode="popLayout">
           {filteredDestinations.map((place) => (
             <motion.div
               layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 260, damping: 25 }}
               key={place.id}
+              // The "Apple Style" Scroll Reveal Animation
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} 
               whileHover={{ y: -6 }}
-              className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-md shadow-slate-200/40 border border-white/60 bg-white"
+              className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 bg-white group"
             >
               <img
                 src={place.image}
                 alt={place.name}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"
               />
 
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
 
-              <div className="absolute bottom-0 left-0 p-5 w-full flex items-center gap-2 text-white">
-                <MapPin size={18} className="opacity-80 shrink-0" />
-                <h3 className="text-lg font-bold tracking-wide drop-shadow-sm">
+              <div className="absolute bottom-0 left-0 p-4 w-full flex items-center gap-1.5 text-white">
+                <MapPin size={14} className="text-blue-400 shrink-0" />
+                <h3 className="text-[13px] md:text-[15px] font-bold tracking-tight drop-shadow-md leading-tight">
                   {place.name}
                 </h3>
               </div>
@@ -125,7 +134,6 @@ export default function TrendingDestinations() {
           ))}
         </AnimatePresence>
       </motion.div>
-
     </div>
   );
 }

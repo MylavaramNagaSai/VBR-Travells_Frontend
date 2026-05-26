@@ -8,3 +8,13 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   overflow-x: hidden; /* Crucial: stops the screen from scrolling when cars drive off-screen */
 }
+
+
+/* Add to src/index.css */
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

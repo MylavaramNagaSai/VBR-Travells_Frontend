@@ -1,3 +1,5 @@
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 import FeaturedGallery from "./components/FeaturedGallery";
 import TripCalculator from "./components/TripCalculator";
@@ -11,36 +13,53 @@ import TodaysInsight from "./components/TodaysInsight";
 import YouTubeShowcase from "./components/YouTubeShowcase";
 import InstagramShowcase from "./components/InstagramShowcase";
 import FacebookShowcase from "./components/FacebookShowcase";
+import GalleryShowcase from "./components/GalleryShowcase";
 import FAQ from "./components/FAQ";
 import StatsBanner from "./components/StatsBanner";
 import Footer from "./components/Footer";
+import ComingSoon from "./components/ComingSoon";
+
+// 1. Group all your homepage components into one clean block
+const Home = () => (
+  <div className="pt-6">
+    <FeaturedGallery />
+    <TripCalculator />
+    <TrendingDestinations />
+    <PopularTemples />
+    <FleetShowcase />
+    <SpecialServices />
+    <DriverRoster />
+    <TodaysInsight />
+    <TravelStories />
+    <YouTubeShowcase />
+    <InstagramShowcase />
+    <FacebookShowcase />
+    <GalleryShowcase />
+    <FAQ />
+    <StatsBanner />
+    <Footer />
+  </div>
+);
 
 export default function App() {
   return (
-    <div className="min-h-screen font-sans text-slate-900 bg-[#f8fafc]">
-      
-      {/* Extracted Navbar Component */}
-      <Navbar />
+    // 2. Wrap the app in the Router
+    <Router>
+      <div className="min-h-screen font-sans text-slate-900 bg-[#f8fafc]">
+        
+        {/* Navbar sits OUTSIDE the Routes so it appears on every page */}
+        <Navbar />
 
-      {/* Featured Gallery sits right below the ticker now */}
-      <div className="pt-6">
-        <FeaturedGallery />
-        <TripCalculator />
-        <TrendingDestinations />
-        <PopularTemples />
-        <FleetShowcase />
-        <SpecialServices />
-        <DriverRoster />
-        <TodaysInsight />
-        <TravelStories />
-        <YouTubeShowcase />
-        <InstagramShowcase />
-        <FacebookShowcase />
-        <FAQ />
-        <StatsBanner />
-        <Footer />
+        {/* 3. Define which components show on which URLs */}
+        <Routes>
+          {/* When URL is exactly "/", show the Home group */}
+          <Route path="/" element={<Home />} />
+          
+          {/* When URL is "/coming-soon", ONLY show the ComingSoon page */}
+          <Route path="/coming-soon" element={<ComingSoon />} />
+        </Routes>
+
       </div>
-
-    </div>
+    </Router>
   );
 }

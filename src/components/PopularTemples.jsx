@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin } from "lucide-react";
 
-const temples = [
+const rawTemples = [
   // --- SOUTH INDIA ---
   { id: 1, name: "Tirupati Balaji", region: "South India", image: "https://images.unsplash.com/photo-1596704017254-9b121068fb31?q=80&w=600&auto=format&fit=crop" },
   { id: 2, name: "Meenakshi Temple", region: "South India", image: "https://images.unsplash.com/photo-1580541631971-a4003d8de5f9?q=80&w=600&auto=format&fit=crop" },
@@ -10,7 +10,7 @@ const temples = [
   { id: 4, name: "Ramanathaswamy", region: "South India", image: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?q=80&w=600&auto=format&fit=crop" },
   { id: 5, name: "Padmanabhaswamy", region: "South India", image: "https://images.unsplash.com/photo-1590005354167-6da97870c913?q=80&w=600&auto=format&fit=crop" },
   { id: 6, name: "Brihadeeswarar", region: "South India", image: "https://images.unsplash.com/photo-1584813531065-ef56041c6f44?q=80&w=600&auto=format&fit=crop" },
-  { id: 7, name: "Sabarimala", region: "South India", image: "https:/" },
+  { id: 7, name: "Sabarimala", region: "South India", image: "https://images.unsplash.com/photo-1590766940554-634a7ed41450?q=80&w=600&auto=format&fit=crop" },
   { id: 8, name: "Guruvayur", region: "South India", image: "https://images.unsplash.com/photo-1590766940554-634a7ed41450?q=80&w=600&auto=format&fit=crop" },
   { id: 9, name: "Virupaksha Temple", region: "South India", image: "https://images.unsplash.com/photo-1600100398055-143588918947?q=80&w=600&auto=format&fit=crop" },
   { id: 10, name: "Sri Ranganathaswamy", region: "South India", image: "https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=600&auto=format&fit=crop" },
@@ -52,6 +52,9 @@ const temples = [
   { id: 40, name: "Danteshwari", region: "East & North-East", image: "https://images.unsplash.com/photo-1589304028590-798eb4b75225?q=80&w=600&auto=format&fit=crop" },
 ];
 
+// Sort alphabetically right away
+const temples = rawTemples.sort((a, b) => a.name.localeCompare(b.name));
+
 const categories = ["All", "South India", "North India", "West & Central", "East & North-East"];
 
 export default function PopularTemples() {
@@ -62,26 +65,27 @@ export default function PopularTemples() {
     : temples.filter(t => t.region === activeCategory);
 
   return (
-    <div className="w-full py-16 px-4 max-w-7xl mx-auto bg-slate-50 rounded-3xl my-8 border border-slate-200/50">
+    // Matches the exact padding of the new Navbar for flawless edge alignment
+    <div className="w-full px-4 lg:px-8 py-16 flex flex-col bg-slate-50 my-8">
       
       {/* Title and Description */}
-      <div className="text-center mb-10">
-        <h2 className="text-3xl md:text-4xl font-extrabold text-orange-600 tracking-tight">Divine Pilgrimages & Temples</h2>
-        <p className="text-slate-500 font-medium mt-2 max-w-xl mx-auto">
+      <div className="text-center mb-12">
+        <h2 className="text-4xl md:text-5xl font-extrabold text-orange-600 tracking-tight">Divine Pilgrimages & Temples</h2>
+        <p className="text-slate-500 font-medium mt-4 max-w-xl mx-auto">
           Embark on a spiritual journey. Explore 40 of the most revered and sacred temples across India for your next Yatra or Darshan.
         </p>
       </div>
 
       {/* Dynamic Category Filtering Buttons */}
-      <div className="flex flex-wrap justify-center gap-3 mb-10">
+      <div className="flex flex-wrap justify-center gap-2 md:gap-3 mb-12">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`relative px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm ${
+            className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all shadow-sm ${
               activeCategory === cat
-                ? "bg-orange-500 text-white shadow-md shadow-orange-200"
-                : "bg-white/80 text-slate-600 hover:text-orange-600 border border-slate-200/50 backdrop-blur-md"
+                ? "bg-orange-600 text-white shadow-lg shadow-orange-200 scale-105"
+                : "bg-white text-slate-600 hover:text-orange-600 border border-slate-200"
             }`}
           >
             {cat}
@@ -89,36 +93,38 @@ export default function PopularTemples() {
         ))}
       </div>
 
-      {/* Grid Layout containing cards */}
+      {/* Grid Layout - Up to 6/7 columns for much smaller tiles */}
       <motion.div 
         layout
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 md:gap-5"
       >
         <AnimatePresence mode="popLayout">
           {filteredTemples.map((temple) => (
             <motion.div
               layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", stiffness: 260, damping: 25 }}
               key={temple.id}
+              // The "Apple Style" Scroll Reveal Animation
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} 
               whileHover={{ y: -6 }}
-              className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-md shadow-slate-200/40 border border-orange-100 bg-white"
+              className="relative aspect-[4/5] rounded-2xl overflow-hidden shadow-md shadow-slate-200/50 border border-slate-100 bg-white group"
             >
               <img
                 src={temple.image}
                 alt={temple.name}
-                className="absolute inset-0 w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 loading="lazy"
               />
 
               {/* Warmer gradient for temples */}
-              <div className="absolute inset-0 bg-gradient-to-t from-orange-950/90 via-black/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-orange-950/90 via-slate-950/20 to-transparent" />
 
-              <div className="absolute bottom-0 left-0 p-5 w-full flex items-center gap-2 text-white">
-                <MapPin size={18} className="text-orange-300 shrink-0" />
-                <h3 className="text-lg font-bold tracking-wide drop-shadow-sm">
+              <div className="absolute bottom-0 left-0 p-4 w-full flex items-center gap-1.5 text-white">
+                <MapPin size={14} className="text-orange-400 shrink-0" />
+                <h3 className="text-[13px] md:text-[15px] font-bold tracking-tight drop-shadow-md leading-tight">
                   {temple.name}
                 </h3>
               </div>
