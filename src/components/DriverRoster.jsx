@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ShieldCheck, UserCheck, HeartHandshake, Languages, FileBadge, CarFront, MapPin } from "lucide-react";
+import { ShieldCheck, UserCheck, HeartHandshake, Languages, FileBadge, CarFront, MessageCircle } from "lucide-react";
 
 // The strict safety protocols
 const safetyProtocols = [
@@ -27,37 +27,53 @@ const safetyProtocols = [
 ];
 
 // Extracted Driver Roster Data
+// NOTE: I set 'image: null' for some drivers so you can see the Initials Fallback in action!
 const drivers = [
-  { id: 1, name: "SK HABEEB BASHA", license: "DLFAP026104462003", experience: "10+ Years" },
-  { id: 2, name: "N SREENIVASULU", license: "AP2262017000237", experience: "8 Years" },
-  { id: 3, name: "SK GOUSE BASHA", license: "Verified", experience: "7 Years" },
-  { id: 4, name: "SK SHAHUL HAMEED", license: "1234/DL/1999", experience: "25+ Years" },
-  { id: 5, name: "PUJARI KIRAN", license: "556760392638", experience: "5 Years" },
-  { id: 6, name: "A SREENIVASULU", license: "2873/FDL/1993", experience: "30+ Years" },
-  { id: 7, name: "RAJENDRA PRASAD G", license: "DLFAP026195522006", experience: "12 Years" },
-  { id: 8, name: "RAFI SHAIK", license: "AP0260160002387", experience: "9 Years" },
-  { id: 9, name: "MAHABOOB MOGHAL", license: "1909/DL/2002", experience: "22 Years" },
-  { id: 10, name: "V RAVIKIRAN SUDHEER", license: "2906/FDL/1990", experience: "35 Years" },
-  { id: 11, name: "SHEIK SADHIK BASHA", license: "Verified", experience: "8 Years" },
-  { id: 12, name: "P SREEDHAR", license: "AP02620120031426", experience: "14 Years" },
-  { id: 13, name: "CH NARENDRA", license: "DLFAP22614242008", experience: "11 Years" },
-  { id: 14, name: "MOHAMOD BABA", license: "AP02620200035096", experience: "6 Years" },
-  { id: 15, name: "N HEMANTH", license: "DLRAP02620190037171", experience: "7 Years" },
-  { id: 16, name: "P MOHANRAJ", license: "AP12620140001175", experience: "10 Years" },
-  { id: 17, name: "VENKATESWARLU V", license: "AP02619930000860", experience: "30+ Years" },
-  { id: 18, name: "D SREENIVASULU", license: "922/DL/2002", experience: "22 Years" },
-  { id: 19, name: "HARI KUMAR M", license: "DLRAP02620200018205", experience: "5 Years" },
-  { id: 20, name: "THAYYUB SHAIK", license: "AP02620150008799", experience: "9 Years" },
-  { id: 21, name: "SHAIK SHAKEEL", license: "DLFAP2266642009", experience: "12 Years" },
-  { id: 22, name: "KARIMULLA SK", license: "Verified", experience: "8 Years" },
-  { id: 23, name: "M SURESH", license: "55/DL/2000", experience: "24 Years" },
-  { id: 24, name: "FOZIL SHAIK", license: "AP22620130001784", experience: "11 Years" },
-  { id: 25, name: "MASTHAN DAMMARLA", license: "DLFAP026151012008", experience: "13 Years" }
+  { id: 1, name: "SK HABEEB BASHA", license: "DLFAP026104462003", experience: "10+ Years", image: null },
+  { id: 2, name: "N SREENIVASULU", license: "AP2262017000237", experience: "8 Years", image: null },
+  { id: 3, name: "SK GOUSE BASHA", license: "Verified", experience: "7 Years", image: null },
+  { id: 4, name: "SK SHAHUL HAMEED", license: "1234/DL/1999", experience: "25+ Years", image: "./shahulhameed.jpeg" },
+  { id: 5, name: "PUJARI KIRAN", license: "556760392638", experience: "5 Years", image: null },
+  { id: 6, name: "A SREENIVASULU", license: "2873/FDL/1993", experience: "30+ Years", image: null },
+  { id: 7, name: "RAJENDRA PRASAD G", license: "DLFAP026195522006", experience: "12 Years", image: null },
+  { id: 8, name: "RAFI SHAIK", license: "AP0260160002387", experience: "9 Years", image: null },
+  { id: 9, name: "MAHABOOB MOGHAL", license: "1909/DL/2002", experience: "22 Years", image: null },
+  { id: 10, name: "V RAVIKIRAN SUDHEER", license: "2906/FDL/1990", experience: "35 Years", image: null },
+  { id: 11, name: "SHEIK SADHIK BASHA", license: "Verified", experience: "8 Years", image: null },
+  { id: 12, name: "P SREEDHAR", license: "AP02620120031426", experience: "14 Years", image: null },
+  { id: 13, name: "CH NARENDRA", license: "DLFAP22614242008", experience: "11 Years", image: null },
+  { id: 14, name: "MOHAMOD BABA", license: "AP02620200035096", experience: "6 Years", image: null },
+  { id: 15, name: "N HEMANTH", license: "DLRAP02620190037171", experience: "7 Years", image: null },
+  { id: 16, name: "P MOHANRAJ", license: "AP12620140001175", experience: "10 Years", image: null },
+  { id: 17, name: "VENKATESWARLU V", license: "AP02619930000860", experience: "30+ Years", image: null },
+  { id: 18, name: "D SREENIVASULU", license: "922/DL/2002", experience: "22 Years", image: null },
+  { id: 19, name: "HARI KUMAR M", license: "DLRAP02620200018205", experience: "5 Years", image: null },
+  { id: 20, name: "THAYYUB SHAIK", license: "AP02620150008799", experience: "9 Years", image: null },
+  { id: 21, name: "SHAIK SHAKEEL", license: "DLFAP2266642009", experience: "12 Years", image: null },
+  { id: 22, name: "KARIMULLA SK", license: "Verified", experience: "8 Years", image: null },
+  { id: 23, name: "M SURESH", license: "55/DL/2000", experience: "24 Years", image: null },
+  { id: 24, name: "FOZIL SHAIK", license: "AP22620130001784", experience: "11 Years", image: null },
+  { id: 25, name: "MASTHAN DAMMARLA", license: "DLFAP026151012008", experience: "13 Years", image: null }
 ].map(d => ({ 
   ...d, 
-  image: "ttps://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop", 
   languages: "Telugu, Hindi" 
 }));
+
+// Helper function to extract the first letters of the first two names
+const getInitials = (name) => {
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return parts[0].substring(0, 2).toUpperCase();
+};
+
+// Helper function to generate the pre-filled WhatsApp link
+const getWhatsAppLink = (driver) => {
+  const phone = "919866128901";
+  const message = `Hello VBR Travels,\n\nI am interested in booking or inquiring about this driver:\n\n*Name:* ${driver.name}\n*Experience:* ${driver.experience}\n*License:* ${driver.license}\n*Languages:* ${driver.languages}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+};
 
 export default function DriverRoster() {
   return (
@@ -110,52 +126,73 @@ export default function DriverRoster() {
           {[...drivers, ...drivers].map((driver, index) => (
             <div 
               key={index} 
-              // INCREASED WIDTH and PADDING HERE
-              className="min-w-[360px] bg-white p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl transition-shadow flex flex-col items-center text-center"
+              className="min-w-[340px] bg-white p-6 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl transition-shadow flex flex-col items-center text-center"
             >
-              {/* Profile Image */}
-              <div className="relative mb-6">
-                {/* INCREASED IMAGE SIZE HERE */}
-                <img 
-                  src={driver.image} 
-                  alt={driver.name} 
-                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-md"
-                  loading="lazy"
-                />
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-full border-2 border-white flex items-center gap-1 shadow-sm">
-                  <ShieldCheck size={14} /> Pro
+              {/* Profile Image OR Initials Fallback */}
+              <div className="relative mb-5">
+                {driver.image ? (
+                  <img 
+                    src={driver.image} 
+                    alt={driver.name} 
+                    className="w-28 h-28 rounded-full object-cover border-4 border-white shadow-md bg-slate-100"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-28 h-28 rounded-full border-4 border-white shadow-md bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center text-white text-3xl font-black tracking-widest">
+                    {getInitials(driver.name)}
+                  </div>
+                )}
+                
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border-2 border-white flex items-center gap-1 shadow-sm">
+                  <ShieldCheck size={12} /> Pro
                 </div>
               </div>
 
-              {/* INCREASED NAME FONT SIZE */}
-              <h3 className="text-xl md:text-2xl font-black text-slate-900 mb-5 tracking-tight">{driver.name}</h3>
+              {/* Driver Details Stacked */}
+              <h3 className="text-xl font-black text-slate-900 mb-4 tracking-tight line-clamp-1">{driver.name}</h3>
 
-              <div className="w-full flex flex-col gap-3">
+              <div className="w-full flex flex-col gap-2.5 mb-6">
                 
-                {/* INCREASED EXPERIENCE/LOCATION SIZE */}
-                <div className="flex items-center justify-between w-full px-4 text-sm bg-slate-50 rounded-xl py-3 border border-slate-100">
-                  <div className="flex items-center gap-2 text-slate-600 font-bold">
+                {/* Experience */}
+                <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-100">
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Experience</span>
+                  <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
                     <CarFront size={16} className="text-emerald-500" />
-                    Exp: {driver.experience}
-                  </div>
-                  <div className="flex items-center gap-2 text-slate-600 font-bold">
-                    <MapPin size={16} className="text-blue-500" />
-                    Local
+                    {driver.experience}
                   </div>
                 </div>
 
-                {/* INCREASED LICENSE TEXT SIZE */}
-                <div className="flex items-center gap-2 px-3 py-2">
-                  <FileBadge size={16} className="text-purple-500 shrink-0" />
-                  <span className="text-xs md:text-sm font-extrabold text-slate-500 uppercase tracking-wider truncate">{driver.license}</span>
+                {/* License Number */}
+                <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-100">
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider">License</span>
+                  <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                    <FileBadge size={16} className="text-purple-500" />
+                    <span className="truncate max-w-[120px]">{driver.license}</span>
+                  </div>
                 </div>
                 
-                {/* INCREASED LANGUAGES TEXT SIZE */}
-                <div className="flex items-center gap-2 px-3 py-2 border-t border-slate-100">
-                  <Languages size={16} className="text-amber-500 shrink-0" />
-                  <span className="text-sm font-bold text-slate-600">{driver.languages}</span>
+                {/* Languages */}
+                <div className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-100">
+                  <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Languages</span>
+                  <div className="flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                    <Languages size={16} className="text-amber-500" />
+                    {driver.languages}
+                  </div>
                 </div>
+
               </div>
+
+              {/* WhatsApp Contact Button */}
+              <a 
+                href={getWhatsAppLink(driver)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full mt-auto flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EBE5C] text-white px-4 py-3.5 rounded-xl font-bold text-sm transition-all shadow-md shadow-[#25D366]/20 active:scale-95"
+              >
+                <MessageCircle size={18} />
+                Contact Driver
+              </a>
+
             </div>
           ))}
         </motion.div>
