@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-// FIX: Replaced 'Youtube' with 'MonitorPlay' to resolve the export error
 import { MonitorPlay, Play, Eye, Calendar } from "lucide-react";
 
 const CHANNEL_URL = "https://www.youtube.com/channel/UCKL0bA9xxMxmlztdtXnmz0w";
@@ -37,80 +36,97 @@ const youtubeVideos = [
 
 export default function YouTubeShowcase() {
   return (
-    <div className="w-full py-20 px-4 max-w-7xl mx-auto">
+    <div className="w-full py-12 bg-slate-50/50">
       
-      {/* Header Section with Official Channel Link */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 bg-white/70 backdrop-blur-md p-8 rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50">
-        <div className="text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-            {/* FIX: Using MonitorPlay here */}
-            <MonitorPlay size={32} className="text-red-600" />
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">VBR on YouTube</h2>
-          </div>
-          <p className="text-slate-500 font-medium max-w-2xl text-lg">
-            Watch our fleet in action. See the quality of our buses, cars, and tempos before you book your trip.
-          </p>
-        </div>
+      {/* ALIGNMENT FIX: Wrap EVERYTHING inside this single max-w container */}
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
         
-        <a 
-          href={CHANNEL_URL} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30 hover:shadow-red-600/50 hover:-translate-y-1"
-        >
-          <Play size={20} className="fill-white" />
-          Subscribe to Channel
-        </a>
-      </div>
+        {/* 1. COMPACT HEADER */}
+        <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-100 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-0 mb-8">
+          
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <MonitorPlay size={24} className="text-red-600" />
+              <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">VBR on YouTube</h2>
+            </div>
+            <p className="text-sm text-slate-500 font-medium">
+              Watch our fleet in action. See the quality of our buses, cars, and tempos before you book your trip.
+            </p>
+          </div>
 
-      {/* Video Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {youtubeVideos.map((video, index) => (
-          <motion.div
-            key={video.id}
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: index * 0.1, type: "spring", stiffness: 200 }}
-            className="bg-white rounded-3xl overflow-hidden shadow-lg shadow-slate-200/40 border border-slate-100 flex flex-col group"
+          <a 
+            href={CHANNEL_URL} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md shadow-red-600/20 active:scale-95 shrink-0"
           >
-            {/* YouTube Iframe Embed */}
-            <div className="relative w-full pt-[56.25%] bg-slate-900">
-              <iframe
-                className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${video.id}?rel=0`}
-                title={video.title}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              ></iframe>
-            </div>
+            <Play size={16} className="fill-white" />
+            Subscribe to Channel
+          </a>
 
-            {/* Video Details & Description */}
-            <div className="p-6 md:p-8 flex flex-col flex-1">
-              <h3 className="text-2xl font-bold text-slate-900 mb-3 group-hover:text-red-600 transition-colors">
-                {video.title}
-              </h3>
-              
-              <p className="text-slate-500 font-medium leading-relaxed mb-6 flex-1">
-                {video.description}
-              </p>
-              
-              <div className="flex items-center gap-6 pt-4 border-t border-slate-100 text-sm font-bold text-slate-400">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  {video.date}
+        </div>
+
+        {/* 2. SINGLE ROW SCROLLABLE VIDEOS */}
+        <div className="relative w-full">
+          
+          {/* Soft edge fades - Hidden on large screens (lg:hidden) since all 4 fit perfectly */}
+          <div className="absolute top-0 left-0 w-8 md:w-12 h-full bg-gradient-to-r from-slate-50/50 to-transparent z-10 pointer-events-none lg:hidden" />
+          <div className="absolute top-0 right-0 w-8 md:w-12 h-full bg-gradient-to-l from-slate-50/50 to-transparent z-10 pointer-events-none lg:hidden" />
+
+          {/* The Scroll Track */}
+          <div className="flex overflow-x-auto lg:overflow-visible gap-5 md:gap-6 pb-8 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+            
+            {youtubeVideos.map((video, index) => (
+              <motion.div 
+                key={video.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1, type: "spring", stiffness: 200 }}
+                // CHANGED HERE: Replaced fixed width with lg:w-full lg:flex-1
+                className="relative w-[280px] md:w-[320px] lg:w-full lg:flex-1 shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-md shadow-slate-200/50 flex flex-col group"
+              >
+                {/* iFrame Container: Forced 16:9 Aspect Ratio */}
+                <div className="relative w-full pt-[56.25%] bg-slate-900">
+                  <iframe
+                    className="absolute inset-0 w-full h-full"
+                    src={`https://www.youtube.com/embed/${video.id}?rel=0`}
+                    title={video.title}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Eye size={16} />
-                  {video.views}
+
+                {/* Video Details */}
+                <div className="p-4 md:p-5 flex flex-col flex-grow">
+                  <h3 className="text-sm md:text-base font-bold text-slate-900 leading-tight mb-2 line-clamp-2 group-hover:text-red-600 transition-colors">
+                    {video.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium line-clamp-2 mb-4">
+                    {video.description}
+                  </p>
+                  
+                  {/* Meta Data Footer */}
+                  <div className="mt-auto flex items-center gap-4 text-[10px] md:text-xs text-slate-400 font-bold border-t border-slate-50 pt-3">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={12} />
+                      {video.date}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Eye size={12} />
+                      {video.views}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+
+              </motion.div>
+            ))}
+
+          </div>
+        </div>
+
       </div>
-
     </div>
   );
 }
