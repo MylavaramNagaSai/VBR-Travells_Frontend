@@ -40,7 +40,6 @@ export default function FeaturedGallery() {
         .animate-hero-scroll {
           display: flex;
           width: max-content;
-          /* CHANGED: Increased from 45s to 90s to slow down the speed */
           animation: hero-scroll 90s linear infinite;
         }
         .animate-hero-scroll:hover {
@@ -48,28 +47,28 @@ export default function FeaturedGallery() {
         }
       `}</style>
 
-      {/* CHANGED: Removed the maskImage style that was causing the white edges */}
       <div className="w-full relative">
-        <div className="animate-hero-scroll gap-4 px-4">
+        <div className="animate-hero-scroll gap-3 md:gap-4 px-4">
           
           {doubledGallery.map((vehicle, index) => (
             <div 
               key={`${vehicle.name}-${index}`} 
-              className="relative w-64 md:w-72 h-[340px] rounded-[2rem] overflow-hidden shrink-0 group cursor-pointer shadow-lg shadow-slate-200/50 border border-slate-100"
+              // THE FIX: Made the cards narrow (w-40) and tall (h-56) to match portrait photos perfectly!
+              className="relative w-40 sm:w-48 md:w-64 h-56 sm:h-64 md:h-72 rounded-2xl md:rounded-[2rem] overflow-hidden shrink-0 group shadow-md shadow-slate-200/50 border border-slate-100 bg-white flex flex-col"
             >
-              {/* Background Image */}
-              <img 
-                src={vehicle.image} 
-                alt={vehicle.name} 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-              />
+              {/* Top Section: Image Area - Removed padding, allowed to go edge-to-edge */}
+              <div className="w-full flex-1 bg-slate-100 relative overflow-hidden">
+                <img 
+                  src={vehicle.image} 
+                  alt={vehicle.name} 
+                  // Because the card is now shaped like a portrait photo, object-cover won't chop off the sides!
+                  className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700" 
+                />
+              </div>
               
-              {/* Dark Overlay Gradient */}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
-              
-              {/* Text Content */}
-              <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
-                <h3 className="text-white font-extrabold text-lg leading-snug drop-shadow-md">
+              {/* Bottom Section: Text Bar - Made slightly taller to fit 2 lines if needed */}
+              <div className="w-full h-12 py-1 px-2 bg-white border-t border-slate-100 flex items-center justify-center shrink-0">
+                <h3 className="text-slate-800 font-bold text-[11px] sm:text-xs md:text-sm text-center line-clamp-2 leading-tight">
                   {vehicle.name}
                 </h3>
               </div>

@@ -1,17 +1,15 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Snowflake, CheckCircle2, MapPin, Play, Image as ImageIcon, Check, Phone, ArrowLeft } from "lucide-react";
-import { fleetData } from "../data/fleetData"; // Import your central data
+import { Users, Snowflake, CheckCircle2, MapPin, Play, Check, Phone, ArrowLeft } from "lucide-react"; // Removed ImageIcon
+import { fleetData } from "../data/fleetData";
 
 export default function VehicleDetails() {
-  const { slug } = useParams(); // Reads the URL (e.g., /fleet/innova-crysta)
+  const { slug } = useParams(); 
   const [activeMedia, setActiveMedia] = useState(0);
 
-  // Find the exact vehicle matching the URL
   const vehicle = fleetData.find(v => v.slug === slug);
 
-  // Scroll to top when page loads
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [slug]);
@@ -75,25 +73,22 @@ export default function VehicleDetails() {
               </AnimatePresence>
             </div>
 
-            {/* Thumbnail Strip */}
-            <div className="h-24 md:h-28 bg-slate-950 flex gap-3 p-3 overflow-x-auto shrink-0 [&::-webkit-scrollbar]:hidden">
+            {/* REDUCED THUMBNAIL STRIP (Sleeker tabs, no broken icon!) */}
+            <div className="h-16 md:h-20 bg-slate-950 flex gap-2.5 p-2.5 overflow-x-auto shrink-0 [&::-webkit-scrollbar]:hidden">
               {vehicle.gallery.map((img, idx) => (
                 <button 
                   key={idx}
                   onClick={() => setActiveMedia(idx)}
-                  className={`relative shrink-0 w-24 md:w-32 h-full rounded-xl overflow-hidden border-2 transition-all ${activeMedia === idx ? "border-blue-500 scale-105" : "border-transparent opacity-50 hover:opacity-100"}`}
+                  className={`relative shrink-0 w-24 md:w-28 h-full rounded-lg overflow-hidden border-2 transition-all ${activeMedia === idx ? "border-blue-500 scale-[1.02]" : "border-transparent opacity-50 hover:opacity-100"}`}
                 >
                   <img src={img.src} className="w-full h-full object-cover" alt="Thumb" />
-                  <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                    <ImageIcon size={16} className="text-white drop-shadow-md" />
-                  </div>
                 </button>
               ))}
               <button 
                 onClick={() => setActiveMedia(vehicle.gallery.length)}
-                className={`relative shrink-0 w-24 md:w-32 h-full bg-slate-800 rounded-xl overflow-hidden border-2 flex items-center justify-center transition-all ${activeMedia === vehicle.gallery.length ? "border-red-500 scale-105" : "border-transparent opacity-50 hover:opacity-100"}`}
+                className={`relative shrink-0 w-24 md:w-28 h-full bg-slate-800 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all ${activeMedia === vehicle.gallery.length ? "border-red-500 scale-[1.02]" : "border-transparent opacity-50 hover:opacity-100"}`}
               >
-                <Play size={24} className="text-red-500 fill-red-500" />
+                <Play size={20} className="text-red-500 fill-red-500" />
                 <span className="absolute bottom-1 right-1 text-[8px] font-bold text-white bg-black/50 px-1 rounded">VIDEO</span>
               </button>
             </div>

@@ -105,12 +105,21 @@ export default function LiveStats() {
   ];
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-6 mb-16 relative z-10">
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100 overflow-hidden">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 mb-12 md:mb-16 relative z-10">
+      
+      {/* THE FIX: Replaced Flexbox with a highly optimized Grid Layout */}
+      {/* 2 columns on mobile (grid-cols-2), 4 columns on desktop (md:grid-cols-4) */}
+      <div className="bg-slate-100 rounded-2xl md:rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden grid grid-cols-2 md:grid-cols-4 gap-px">
+        
         {statItems.map((stat, i) => (
-          <div key={i} className="flex-1 py-10 px-6 flex flex-col items-center justify-center hover:bg-slate-50 transition-colors">
-            <stat.icon size={28} className={`${stat.iconColor} mb-4`} />
-            <div className="text-4xl font-black text-slate-900 mb-2">
+          // bg-white against the bg-slate-100 container creates perfect hairline grid borders
+          <div key={i} className="bg-white p-5 sm:p-6 md:py-10 flex flex-col items-center justify-center hover:bg-slate-50 transition-colors text-center h-full">
+            
+            {/* Scaled down icons for mobile */}
+            <stat.icon className={`w-5 h-5 md:w-7 md:h-7 ${stat.iconColor} mb-2 md:mb-4`} />
+            
+            {/* Scaled down text for mobile */}
+            <div className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 mb-1 md:mb-2">
               {stat.label === "Trips Planned" ? (
                 <>{stat.value.toLocaleString()}+</>
               ) : stat.label === "Total Visitors" && stat.value > 1000 ? (
@@ -119,9 +128,12 @@ export default function LiveStats() {
                 <AnimatedNumber value={stat.value} />
               )}
             </div>
-            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">
+            
+            {/* Compact labels for mobile */}
+            <span className="text-[9px] sm:text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest line-clamp-1 md:line-clamp-none">
               {stat.label}
             </span>
+            
           </div>
         ))}
       </div>
