@@ -6,24 +6,21 @@ import { Camera, Tv, Trash2, Image as ImageIcon, Video, AlertCircle, Plus } from
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminMedia() {
-  const [activeTab, setActiveTab] = useState("moments"); // 'moments' or 'tv'
+  const [activeTab, setActiveTab] = useState("moments");
   const [moments, setMoments] = useState([]);
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  // Refs
   const momentImageRef = useRef(null);
   const tvThumbRef = useRef(null);
   const tvVideoRef = useRef(null);
 
-  // States
   const [momentFile, setMomentFile] = useState(null);
   const [tvThumb, setTvThumb] = useState(null);
   const [tvVideo, setTvVideo] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // 1. FETCH LIVE DATA
   useEffect(() => {
     const momentsRef = dbRef(db, "captured_moments");
     const tvRef = dbRef(db, "vbr_tv");
@@ -41,17 +38,10 @@ export default function AdminMedia() {
     return () => { unsubMoments(); unsubTv(); };
   }, []);
 
-  // 2. FILE VALIDATION
+  // NO SIZE LIMITS: Validation simplified to just accept the file
   const handleImageChange = (e, setFileState) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 200 * 1024) {
-        setUploadError("Image must be less than 200KB.");
-        setFileState(null);
-        setPreviewUrl(null);
-        e.target.value = "";
-        return;
-      }
       setUploadError("");
       setFileState(file);
       setPreviewUrl(URL.createObjectURL(file));
@@ -63,7 +53,6 @@ export default function AdminMedia() {
     if (file) setTvVideo(file);
   };
 
-  // 3. UPLOAD HANDLERS
   const handleUploadMoment = async (e) => {
     e.preventDefault();
     if (!momentFile) return setUploadError("Please select an image.");
@@ -117,7 +106,6 @@ export default function AdminMedia() {
     setLoading(false);
   };
 
-  // 4. DELETE HANDLER
   const handleDelete = async (item, type) => {
     if (window.confirm("Delete this media?")) {
       try {
@@ -132,7 +120,6 @@ export default function AdminMedia() {
   return (
     <div className="space-y-6">
       
-      {/* HEADER & TABS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
@@ -156,7 +143,6 @@ export default function AdminMedia() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* UPLOAD FORM */}
         <div className="xl:col-span-1 bg-slate-50 p-6 rounded-2xl border border-slate-200 h-fit sticky top-24">
           <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
             <Plus size={18} className={activeTab === 'moments' ? 'text-blue-600' : 'text-red-600'} /> 
@@ -177,7 +163,7 @@ export default function AdminMedia() {
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                     <ImageIcon size={32} className="text-slate-300 mb-2" />
                     <p className="text-xs font-bold text-slate-600">Select Photo</p>
-                    <p className="text-[10px] text-slate-400 font-bold mt-1">MAX SIZE: 200KB</p>
+                    <p className="text-[10px] text-blue-500 font-bold mt-1">HIGH QUALITY ALLOWED</p>
                   </div>
                 )}
               </div>
@@ -193,7 +179,6 @@ export default function AdminMedia() {
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                     <ImageIcon size={32} className="text-slate-300 mb-2" />
                     <p className="text-xs font-bold text-slate-600">Video Thumbnail</p>
-                    <p className="text-[10px] text-slate-400 font-bold mt-1">MAX SIZE: 200KB</p>
                   </div>
                 )}
               </div>
@@ -208,7 +193,6 @@ export default function AdminMedia() {
           )}
         </div>
 
-        {/* DATABASE GRID */}
         <div className="xl:col-span-2">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <AnimatePresence>
