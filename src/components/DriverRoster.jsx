@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { ShieldCheck, UserCheck, HeartHandshake, CarFront, FileBadge, Languages, MessageCircle, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { ref, onValue } from "firebase/database";
+import { db } from "../firebase";
 
-// --- Data & Helpers ---
-
+// --- Helpers & Static Data ---
 const safetyProtocols = [
   {
     icon: ShieldCheck,
@@ -28,32 +29,8 @@ const safetyProtocols = [
   }
 ];
 
-const rawDrivers = [
-  { id: 1, name: "SK HABEEB BASHA", license: "DLFAP026104462003", experience: "16 Years", languages: "English, Hindi, Telugu, Tamil", image: "./habeebbasha.jpeg" },
-  { id: 2, name: "N SREENIVASULU", license: "AP2262017000237", experience: "18 Years", languages: "Hindi, Tamil, Telugu, English", image: "./nsrinivasulu.jpeg" },
-  { id: 3, name: "SK SHAHUL HAMEED", license: "1234/DL/1999", experience: "26 Years", languages: "English, Hindi, Telugu, Tamil", image: "./shahulhameed.jpeg" },
-  { id: 4, name: "PUJARI KIRAN", license: "556760392638", experience: "15 Years", languages: "English, Telugu, Hindi", image: null },
-  { id: 5, name: "A SREENIVASULU", license: "2873/FDL/1993", experience: "28 Years", languages: "Hindi, English, Telugu, Tamil", image: null },
-  { id: 6, name: "MASTHANBASHA SK", license: "Verified", experience: "20 Years", languages: "Telugu, Hindi, English", image: null },
-  { id: 7, name: "RAVI KUMAR", license: "Verified", experience: "15 Years", languages: "Tamil, English, Hindi, Telugu", image: null },
-  { id: 8, name: "SK HUSSAIN BASHA", license: "Verified", experience: "4 Years", languages: "Telugu, Hindi, English", image: "./skhussainbasha.jpeg" },
-  { id: 9, name: "CH NARENDRA", license: "DLFAP22614242008", experience: "17 Years", languages: "Hindi, English, Telugu, Tamil", image: null },
-  { id: 10, name: "CH NARENDRA", license: "DLFAP22614242008", experience: "17 Years", languages: "Hindi, English, Telugu, Tamil", image: "./chnarendra.jpeg" },
-  { id: 11, name: "VINOD KUMAR", license: "Verified", experience: "6 Years", languages: "Hindi, English, Tamil, Telugu", image: "./vinodkumar.jpeg" },
-  { id: 12, name: "P MOHANRAJ", license: "AP12620140001175", experience: "15 Years", languages: "Telugu, English, Tamil, Hindi", image: null },
-  { id: 13, name: "RAJESH KUMAR", license: "Verified", experience: "7 Years", languages: "English, Hindi, Tamil, Kannada", image: "./rajeshkumar.jpeg" },
-  { id: 14, name: "NOOR KHAN", license: "Verified", experience: "12 Years", languages: "Hindi, Telugu, English", image: "./noorkhan.jpeg" },
-  { id: 15, name: "SHAIK FAMIL", license: "Verified", experience: "10 Years", languages: "Hindi, English, Telugu", image: "./shaikfamel.jpeg" },
-  { id: 16, name: "THAYYUB SHAIK", license: "AP02620150008799", experience: "16 Years", languages: "Hindi, Telugu, Tamil", image: null },
-  { id: 17, name: "SAYYED SHAKEEL", license: "Verified", experience: "12 Years", languages: "English, Hindi, Telugu", image: null },
-  { id: 18, name: "KARIMULLA SK", license: "Verified", experience: "15 Years", languages: "Hindi, English, Telugu", image: "./shaikkarimulla.jpeg" },
-  { id: 19, name: "PATHAN IRFAN", license: "Verified", experience: "5 Years", languages: "Hindi, English, Telugu, Tamil", image: "./pathanirfan.jpeg" },
-  { id: 20, name: "FOZIL SHAIK", license: "AP22620130001784", experience: "15 Years", languages: "English, Hindi, Telugu, Tamil, Malayalam, Kannada", image: null }
-];
-
-const drivers = rawDrivers.sort((a, b) => a.name.localeCompare(b.name));
-
 const getInitials = (name) => {
+  if (!name) return "DR";
   const parts = name.trim().split(" ");
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return parts[0].substring(0, 2).toUpperCase();
@@ -67,14 +44,14 @@ const getWhatsAppLink = (driver) => {
 
 // --- Components ---
 
-// Redesigned Card: Scaled up to be highly readable without overpowering the page
 const DriverCard = ({ driver }) => {
   return (
     <div className="relative w-48 h-72 md:w-64 md:h-[340px] rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 border border-slate-100 bg-slate-900 group shrink-0 cursor-pointer">
       
-      {driver.image ? (
+      {/* Dynamic Image from Firebase */}
+      {driver.imageUrl ? (
         <img
-          src={driver.image}
+          src={driver.imageUrl}
           alt={driver.name}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none opacity-80 group-hover:opacity-100"
           loading="lazy"
@@ -88,22 +65,17 @@ const DriverCard = ({ driver }) => {
         </div>
       )}
 
-      {/* Heavy gradient so the white text is always readable over photos */}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent pointer-events-none" />
 
-      {/* Floating Verification Badge */}
       <div className="absolute top-3 right-3 bg-blue-600/90 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-blue-400/30 z-10 shadow-sm">
         <ShieldCheck size={12} /> Pro
       </div>
 
-      {/* Driver Info Overlay */}
       <div className="absolute inset-0 p-4 flex flex-col justify-end pointer-events-none">
-        
         <h3 className="text-[15px] md:text-[17px] font-black text-white leading-tight mb-2 line-clamp-1 drop-shadow-md">
           {driver.name}
         </h3>
 
-        {/* Info Grid - Scaled up for better readability */}
         <div className="flex flex-col gap-1.5 mb-4">
           <div className="flex items-center gap-2 text-slate-300 text-[10px] md:text-[11px] font-medium">
             <CarFront size={14} className="text-emerald-400 shrink-0" />
@@ -119,7 +91,6 @@ const DriverCard = ({ driver }) => {
           </div>
         </div>
 
-        {/* Action Button: Increased touch target size */}
         <a
           href={getWhatsAppLink(driver)}
           target="_blank"
@@ -235,11 +206,43 @@ const AutoDraggableRow = ({ items, slideDirection = "left" }) => {
 
 // --- Main Layout ---
 export default function DriverRoster() {
+  const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // FETCH LIVE DATA FROM FIREBASE
+  useEffect(() => {
+    const driversRef = ref(db, "drivers");
+    const unsubscribe = onValue(driversRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const driversArray = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+        // Alphabetical sort by name
+        driversArray.sort((a, b) => a.name.localeCompare(b.name));
+        setDrivers(driversArray);
+      } else {
+        setDrivers([]);
+      }
+      setLoading(false);
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   const filteredDrivers = drivers.filter(d => 
     d.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (loading) {
+    return (
+      <div className="w-full py-32 flex justify-center items-center bg-slate-50">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full py-20 bg-slate-50 overflow-hidden relative">
@@ -284,22 +287,32 @@ export default function DriverRoster() {
             className="w-full pl-12 pr-4 py-3.5 bg-white border border-slate-200 rounded-2xl shadow-sm text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
           />
         </div>
-        {filteredDrivers.length === 0 && (
-          <p className="text-center text-slate-500 font-medium mt-6">No drivers found matching "{searchQuery}"</p>
-        )}
       </div>
 
-      <div className="w-full flex flex-col gap-2 md:gap-4 min-h-[360px]">
-        {searchQuery.trim() !== "" ? (
-          <div className="flex flex-wrap justify-center gap-4 md:gap-6 px-6 py-4">
-            {filteredDrivers.map(driver => (
-              <DriverCard key={driver.id} driver={driver} />
-            ))}
-          </div>
-        ) : (
-          <AutoDraggableRow items={filteredDrivers} slideDirection="left" />
-        )}
-      </div>
+      {drivers.length === 0 ? (
+        <div className="text-center py-12">
+          <UserCheck size={48} className="mx-auto text-slate-300 mb-4 opacity-50" />
+          <p className="text-slate-500 font-bold">Driver roster is currently being updated.</p>
+        </div>
+      ) : (
+        <div className="w-full flex flex-col gap-2 md:gap-4 min-h-[360px]">
+          {searchQuery.trim() !== "" ? (
+            <>
+              {filteredDrivers.length === 0 ? (
+                <p className="text-center text-slate-500 font-medium mt-6">No drivers found matching "{searchQuery}"</p>
+              ) : (
+                <div className="flex flex-wrap justify-center gap-4 md:gap-6 px-6 py-4">
+                  {filteredDrivers.map(driver => (
+                    <DriverCard key={driver.id} driver={driver} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <AutoDraggableRow items={filteredDrivers} slideDirection="left" />
+          )}
+        </div>
+      )}
 
     </div>
   );

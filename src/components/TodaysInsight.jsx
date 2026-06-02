@@ -1,49 +1,68 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Camera, MapPin, Clock } from "lucide-react";
-
-// Updated to "This Week" context
-const insights = [
-  {
-    id: 1,
-    driver: "Suresh Kumar",
-    location: "Munnar Tea Estates",
-    caption: "Early morning mist clearing up just as we entered the hills. A magical drive for our guests!",
-    image: "https://images.unsplash.com/photo-1585508889271-200ca23ee214?q=80&w=1200&auto=format&fit=crop",
-    isFeatured: true,
-    time: "Wednesday, 6:30 AM"
-  },
-  {
-    id: 2,
-    driver: "Raju Venkat",
-    location: "East Coast Highway",
-    caption: "Perfect weather cruising along the coastline with the AC Volvo.",
-    image: "https://images.unsplash.com/photo-1449844908441-8829872d2607?q=80&w=800&auto=format&fit=crop",
-    isFeatured: false,
-    time: "Thursday, 10:15 AM"
-  },
-  {
-    id: 3,
-    driver: "Ramesh Reddy",
-    location: "Srisailam Ghats",
-    caption: "Dense forest canopy views from the Innova dashboard.",
-    image: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=800&auto=format&fit=crop",
-    isFeatured: false,
-    time: "Friday, 4:45 PM"
-  },
-  {
-    id: 4,
-    driver: "Karthik Sharma",
-    location: "Ooty Hairpin Bends",
-    caption: "Navigating the famous 36 hairpin bends smoothly.",
-    image: "https://images.unsplash.com/photo-1542224566-6e85f2e6772f?q=80&w=800&auto=format&fit=crop",
-    isFeatured: false,
-    time: "Saturday, 2:20 PM"
-  }
-];
+import { ref, onValue } from "firebase/database";
+import { db } from "../firebase";
 
 export default function ThisWeeksInsights() {
-  const featured = insights.find(img => img.isFeatured);
-  const regular = insights.filter(img => !img.isFeatured);
+  const [insights, setInsights] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Time formatter: converts timestamp to "Wednesday, 6:30 AM"
+  const formatTime = (timestamp) => {
+    return new Date(timestamp).toLocaleDateString('en-US', {
+      weekday: 'long',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  };
+
+  useEffect(() => {
+    const insightsRef = ref(db, "insights");
+    const unsubscribe = onValue(insightsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const now = Date.now();
+        const oneWeekInMs = 7 * 24 * 60 * 60 * 1000;
+
+        // Convert to array, filter out posts older than 7 days, and sort newest first
+        const formattedData = Object.keys(data)
+          .map(key => ({ id: key, ...data[key] }))
+          .filter(item => (now - item.timestamp) <= oneWeekInMs)
+          .sort((a, b) => b.timestamp - a.timestamp);
+
+        setInsights(formattedData);
+      } else {
+        setInsights([]);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full py-24 flex justify-center items-center">
+        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (insights.length === 0) {
+    return (
+      <div className="w-full py-24 flex flex-col items-center justify-center text-slate-400">
+        <Camera size={48} className="mb-4 opacity-20" />
+        <p className="font-bold">No insights from the road this week.</p>
+        <p className="text-sm">Check back soon for new captures from our drivers!</p>
+      </div>
+    );
+  }
+
+  // Find the featured post (prioritize flagged ones, otherwise grab the newest)
+  const featured = insights.find(img => img.isFeatured) || insights[0];
+  // The rest of the regular posts
+  const regular = insights.filter(img => img.id !== featured.id);
 
   return (
     <div className="w-full py-12 md:py-20 px-4 sm:px-6 max-w-[1400px] mx-auto overflow-hidden">
@@ -65,7 +84,6 @@ export default function ThisWeeksInsights() {
         </div>
       </div>
 
-      {/* Grid Layout (Stacks on Mobile, Bento Box on Desktop) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
         
         {/* Featured Large Image */}
@@ -74,11 +92,10 @@ export default function ThisWeeksInsights() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, type: "spring" }}
-          // THE FIX: Reduced mobile height to h-80 so it doesn't eat the whole screen
           className="lg:col-span-8 relative h-80 sm:h-[400px] lg:h-[600px] rounded-2xl md:rounded-3xl overflow-hidden shadow-xl shadow-slate-200/50 group"
         >
           <img 
-            src={featured.image} 
+            src={featured.imageUrl} 
             alt={featured.location}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
           />
@@ -95,7 +112,7 @@ export default function ThisWeeksInsights() {
                 <MapPin size={14} /> {featured.location}
               </div>
               <div className="hidden sm:flex items-center gap-1.5 text-slate-200 text-xs md:text-sm font-semibold bg-black/40 backdrop-blur-md px-2.5 py-1 md:px-3 md:py-1.5 rounded-lg">
-                <Clock size={14} /> {featured.time}
+                <Clock size={14} /> {formatTime(featured.timestamp)}
               </div>
             </div>
             
@@ -109,42 +126,41 @@ export default function ThisWeeksInsights() {
           </div>
         </motion.div>
 
-        {/* 
-            THE MOBILE UPGRADE: Horizontal Swipe Carousel 
-            On mobile, this becomes a sleek swipeable row. On Desktop (lg:), it goes back to a vertical stack.
-        */}
-        <div className="lg:col-span-4 flex overflow-x-auto lg:overflow-visible lg:flex-col gap-4 md:gap-6 pb-4 lg:pb-0 snap-x snap-mandatory lg:snap-none [&::-webkit-scrollbar]:hidden w-full">
-          {regular.map((insight, index) => (
-            <motion.div
-              key={insight.id}
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.15, duration: 0.5 }}
-              className="relative shrink-0 snap-center lg:snap-align-none w-[280px] sm:w-[320px] lg:w-full flex-1 rounded-2xl md:rounded-3xl overflow-hidden shadow-lg shadow-slate-200/40 group cursor-pointer h-56 sm:h-64 lg:h-auto lg:min-h-[180px]"
-            >
-              <img 
-                src={insight.image} 
-                alt={insight.location}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-900/40 to-transparent" />
-              
-              <div className="absolute bottom-0 left-0 w-full p-4 md:p-5 flex flex-col justify-end h-full">
-                <div className="flex items-center gap-1.5 text-blue-400 text-[10px] md:text-xs font-black uppercase tracking-widest mb-1.5 drop-shadow-sm">
-                  <MapPin size={12} className="md:w-3.5 md:h-3.5" /> {insight.location}
+        {/* Regular Images Scroll */}
+        {regular.length > 0 && (
+          <div className="lg:col-span-4 flex overflow-x-auto lg:overflow-visible lg:flex-col gap-4 md:gap-6 pb-4 lg:pb-0 snap-x snap-mandatory lg:snap-none [&::-webkit-scrollbar]:hidden w-full">
+            {regular.map((insight, index) => (
+              <motion.div
+                key={insight.id}
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.15, duration: 0.5 }}
+                className="relative shrink-0 snap-center lg:snap-align-none w-[280px] sm:w-[320px] lg:w-full flex-1 rounded-2xl md:rounded-3xl overflow-hidden shadow-lg shadow-slate-200/40 group cursor-pointer h-56 sm:h-64 lg:h-auto lg:min-h-[180px]"
+              >
+                <img 
+                  src={insight.imageUrl} 
+                  alt={insight.location}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-900/40 to-transparent" />
+                
+                <div className="absolute bottom-0 left-0 w-full p-4 md:p-5 flex flex-col justify-end h-full">
+                  <div className="flex items-center gap-1.5 text-blue-400 text-[10px] md:text-xs font-black uppercase tracking-widest mb-1.5 drop-shadow-sm">
+                    <MapPin size={12} className="md:w-3.5 md:h-3.5" /> {insight.location}
+                  </div>
+                  <p className="text-white font-bold text-sm md:text-base line-clamp-2 leading-snug mb-3">
+                    "{insight.caption}"
+                  </p>
+                  <div className="text-slate-400 text-[11px] md:text-xs font-medium flex justify-between items-center mt-auto">
+                    <span>By <span className="text-slate-200">{insight.driver}</span></span>
+                    <span>{formatTime(insight.timestamp)}</span>
+                  </div>
                 </div>
-                <p className="text-white font-bold text-sm md:text-base line-clamp-2 leading-snug mb-3">
-                  "{insight.caption}"
-                </p>
-                <div className="text-slate-400 text-[11px] md:text-xs font-medium flex justify-between items-center mt-auto">
-                  <span>By <span className="text-slate-200">{insight.driver}</span></span>
-                  <span>{insight.time}</span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

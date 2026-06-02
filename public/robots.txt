@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /coming-soon
+
+Sitemap: https://vbrtourstravels.com/sitemap.xml

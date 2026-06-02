@@ -1,174 +1,189 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Users, Snowflake, CheckCircle2, MapPin, Play, Check, Phone, ArrowLeft } from "lucide-react"; // Removed ImageIcon
-import { fleetData } from "../data/fleetData";
+import { ref, onValue } from "firebase/database";
+import { db } from "../firebase";
+import { ChevronLeft, Users, Snowflake, MapPin, CheckCircle2, Video as VideoIcon, Image as ImageIcon } from "lucide-react";
 
-export default function VehicleDetails() {
-  const { slug } = useParams(); 
-  const [activeMedia, setActiveMedia] = useState(0);
+export default function VehicleDetail() {
+  // THE FIX: This safely grabs the unique ID from the URL whether your router calls it :slug, :id, or anything else.
+  const params = useParams();
+  const vehicleKey = params.id || params.slug || Object.values(params)[0];
 
-  const vehicle = fleetData.find(v => v.slug === slug);
+  const [vehicle, setVehicle] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // This state controls which image/video is showing in the big main viewer
+  const [activeMedia, setActiveMedia] = useState(null); 
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [slug]);
+    if (!vehicleKey) return;
 
-  if (!vehicle) {
+    const vehicleRef = ref(db, `fleet/${vehicleKey}`);
+    const unsubscribe = onValue(vehicleRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setVehicle(data);
+        // Set the main image as the default active media when loaded
+        setActiveMedia({ type: 'image', url: data.image });
+      } else {
+        setVehicle(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [vehicleKey]);
+
+  if (loading) {
     return (
-      <div className="min-h-screen pt-32 pb-20 flex flex-col items-center justify-center text-center px-6">
-        <h1 className="text-4xl font-black text-slate-900 mb-4">Vehicle Not Found</h1>
-        <p className="text-slate-500 mb-8">The vehicle you are looking for does not exist or has been removed.</p>
-        <Link to="/" className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Return to Fleet</Link>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center pt-20">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  const whatsappLink = `https://wa.me/919866128901?text=Hello,%20I'm%20interested%20in%20booking%20the%20${encodeURIComponent(vehicle.name)}.%20Can%20you%20share%20availability?`;
+  if (!vehicle) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center pt-20">
+        <h1 className="text-4xl font-black text-slate-900 mb-4">Vehicle Not Found</h1>
+        <p className="text-slate-500 mb-8">The vehicle you are looking for does not exist or has been removed.</p>
+        <Link to="/fleet" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all">Return to Fleet</Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full pt-28 pb-20 bg-slate-50 min-h-screen">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
+    <div className="w-full min-h-screen bg-slate-50 pt-[100px] pb-20">
+      <div className="max-w-6xl mx-auto px-4 md:px-8">
         
-        {/* Breadcrumb Navigation */}
-        <Link to="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold text-sm mb-8 transition-colors">
-          <ArrowLeft size={16} /> Back to All Vehicles
+        {/* Back Button */}
+        <Link to="/fleet" className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold mb-8 transition-colors">
+          <ChevronLeft size={20} /> Back to Fleet
         </Link>
 
-        <div className="bg-white rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col lg:flex-row overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
           
-          {/* LEFT COLUMN: Media Gallery */}
-          <div className="w-full lg:w-3/5 bg-slate-900 flex flex-col relative h-[50vh] lg:h-auto min-h-[400px]">
-            {/* Main Viewer */}
-            <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-black">
-              <AnimatePresence mode="wait">
-                {activeMedia < vehicle.gallery.length ? (
-                  <motion.img 
-                    key={`img-${activeMedia}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    src={vehicle.gallery[activeMedia].src} 
-                    alt="Vehicle Interior" 
-                    className="w-full h-full object-contain"
-                  />
-                ) : (
-                  <motion.div 
-                    key="video"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full h-full"
-                  >
-                    <iframe
-                      className="w-full h-full"
-                      src={`https://www.youtube.com/embed/${vehicle.videoId}?autoplay=1&mute=1`}
-                      title="Vehicle Video"
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    ></iframe>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* REDUCED THUMBNAIL STRIP (Sleeker tabs, no broken icon!) */}
-            <div className="h-16 md:h-20 bg-slate-950 flex gap-2.5 p-2.5 overflow-x-auto shrink-0 [&::-webkit-scrollbar]:hidden">
-              {vehicle.gallery.map((img, idx) => (
-                <button 
-                  key={idx}
-                  onClick={() => setActiveMedia(idx)}
-                  className={`relative shrink-0 w-24 md:w-28 h-full rounded-lg overflow-hidden border-2 transition-all ${activeMedia === idx ? "border-blue-500 scale-[1.02]" : "border-transparent opacity-50 hover:opacity-100"}`}
-                >
-                  <img src={img.src} className="w-full h-full object-cover" alt="Thumb" />
-                </button>
-              ))}
-              <button 
-                onClick={() => setActiveMedia(vehicle.gallery.length)}
-                className={`relative shrink-0 w-24 md:w-28 h-full bg-slate-800 rounded-lg overflow-hidden border-2 flex items-center justify-center transition-all ${activeMedia === vehicle.gallery.length ? "border-red-500 scale-[1.02]" : "border-transparent opacity-50 hover:opacity-100"}`}
-              >
-                <Play size={20} className="text-red-500 fill-red-500" />
-                <span className="absolute bottom-1 right-1 text-[8px] font-bold text-white bg-black/50 px-1 rounded">VIDEO</span>
-              </button>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: Details & Specs */}
-          <div className="w-full lg:w-2/5 flex flex-col bg-white">
-            <div className="p-6 md:p-8 lg:p-10 flex flex-col gap-8 flex-grow">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            
+            {/* LEFT: Media Viewer */}
+            <div className="p-6 bg-slate-100/50 flex flex-col gap-4 border-r border-slate-100">
               
-              <div>
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">
-                    {vehicle.type}
-                  </span>
-                  <span className="flex items-center gap-1 bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">
-                    <MapPin size={12} /> Live Tracking
-                  </span>
-                  <span className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">
-                    <CheckCircle2 size={12} /> Verified Condition
-                  </span>
-                </div>
-                <h1 className="text-3xl lg:text-4xl font-black text-slate-900 leading-tight mb-4">
-                  {vehicle.name}
-                </h1>
-                <p className="text-slate-500 font-medium text-sm lg:text-base leading-relaxed">
-                  {vehicle.description}
-                </p>
+              {/* Main Display Area */}
+              <div className="w-full aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner relative flex items-center justify-center">
+                {activeMedia?.type === 'video' ? (
+                  <video src={activeMedia.url} controls autoPlay className="w-full h-full object-contain" />
+                ) : (
+                  <img src={activeMedia?.url} alt={vehicle.name} className="w-full h-full object-cover" />
+                )}
               </div>
 
-              {/* Pricing Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 md:p-5 flex flex-col gap-1">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Rate Per KM</span>
-                  <span className="text-2xl lg:text-3xl font-black text-blue-600">{vehicle.perKm}</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 md:p-5 flex flex-col gap-1">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Rate Per Day</span>
-                  <span className="text-2xl lg:text-3xl font-black text-slate-900">{vehicle.perDay}</span>
-                </div>
-              </div>
+              {/* Thumbnail Gallery */}
+              <div className="flex gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden">
+                
+                {/* Main Exterior Image Thumbnail */}
+                <button 
+                  onClick={() => setActiveMedia({ type: 'image', url: vehicle.image })}
+                  className={`relative w-20 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeMedia?.url === vehicle.image ? 'border-blue-600 shadow-md' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                >
+                  <img src={vehicle.image} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20"><ImageIcon size={14} className="text-white"/></div>
+                </button>
 
-              {/* Amenities List */}
-              <div>
-                <h3 className="text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-                  Comfort & Amenities
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
-                  <div className="flex items-start gap-2.5">
-                    <div className="mt-0.5 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                      <Users size={12} className="text-blue-600" />
-                    </div>
-                    <span className="text-sm font-bold text-slate-700">{vehicle.seats}</span>
-                  </div>
-                  {vehicle.amenities.map((amenity, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5">
-                      <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                        <Check size={12} className="text-emerald-600" />
-                      </div>
-                      <span className="text-sm font-bold text-slate-700">{amenity}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+                {/* Video Thumbnail */}
+                {vehicle.videoUrl && (
+                  <button 
+                    onClick={() => setActiveMedia({ type: 'video', url: vehicle.videoUrl })}
+                    className={`relative w-20 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all bg-slate-900 ${activeMedia?.url === vehicle.videoUrl ? 'border-blue-600 shadow-md' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  >
+                    <video src={vehicle.videoUrl} className="w-full h-full object-cover opacity-50" />
+                    <div className="absolute inset-0 flex items-center justify-center"><VideoIcon size={20} className="text-white"/></div>
+                  </button>
+                )}
 
+                {/* Interior Images Thumbnails */}
+                {vehicle.interiorImages && vehicle.interiorImages.map((img, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setActiveMedia({ type: 'image', url: img.url })}
+                    className={`relative w-20 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${activeMedia?.url === img.url ? 'border-blue-600 shadow-md' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  >
+                    <img src={img.url} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+
+              </div>
             </div>
 
-            {/* Sticky Bottom Action */}
-            <div className="p-6 md:p-8 bg-white border-t border-slate-100 mt-auto shrink-0">
-              <a 
-                href={whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-3 bg-[#25D366] hover:bg-[#1EBE5C] text-white py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-[#25D366]/20 hover:-translate-y-1"
-              >
-                <Phone size={24} className="fill-white" />
-                Book via WhatsApp
-              </a>
+            {/* RIGHT: Vehicle Details & Pricing */}
+            <div className="p-8 lg:p-10 flex flex-col">
+              
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-100 text-slate-600 font-bold text-xs mb-4 w-fit uppercase tracking-wider">
+                {vehicle.type}
+              </div>
+
+              <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-2 leading-tight">
+                {vehicle.name}
+              </h1>
+              
+              <div className="text-sm font-bold text-slate-500 mb-6 bg-slate-50 p-2 rounded-lg inline-block w-fit border border-slate-100">
+                Reg: <span className="uppercase text-slate-800">{vehicle.numberPlate}</span>
+              </div>
+
+              {/* Specs Badges */}
+              <div className="flex flex-wrap gap-3 mb-8">
+                <div className="flex items-center gap-2 font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-xl shadow-sm">
+                  <Users size={18} className="text-blue-600" /> 
+                  {vehicle.seats} {vehicle.beds !== "0" && vehicle.beds ? `+ ${vehicle.beds} Bed` : 'Seater'}
+                </div>
+                <div className="flex items-center gap-2 font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-xl shadow-sm">
+                  <Snowflake size={18} className={vehicle.ac ? "text-blue-600" : "text-slate-400"} /> 
+                  {vehicle.ac ? "Air Conditioned" : "Non-A/C"}
+                </div>
+                {vehicle.liveTracking && (
+                  <div className="flex items-center gap-2 font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-xl shadow-sm">
+                    <MapPin size={18} className="text-emerald-500" /> Live Tracking Enabled
+                  </div>
+                )}
+              </div>
+
+              <hr className="border-slate-100 mb-8" />
+
+              {/* Pricing Box */}
+              <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-6 mb-8">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Transparent Pricing</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-slate-600 text-lg">Per Kilometer</span>
+                    <span className="text-2xl font-black text-blue-700">₹{vehicle.perKm}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-4 border-t border-blue-100/60">
+                    <span className="font-bold text-slate-600 text-lg">Per Day</span>
+                    <span className="text-xl font-bold text-slate-800">₹{vehicle.perDay}</span>
+                  </div>
+                  {vehicle.waitingCharge && (
+                    <div className="flex justify-between items-center pt-4 border-t border-blue-100/60">
+                      <span className="font-bold text-slate-600 text-sm">Waiting Charge</span>
+                      <span className="text-sm font-bold text-slate-500">₹{vehicle.waitingCharge} / hr</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Book Button */}
+              <div className="mt-auto">
+                <a 
+                  href={`https://wa.me/919866128901?text=Hello,%20I'm%20interested%20in%20booking%20the%20${encodeURIComponent(vehicle.name)}%20(${vehicle.numberPlate}).`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-blue-600 text-white py-4 rounded-xl font-black text-lg transition-all shadow-xl shadow-slate-900/10 hover:-translate-y-1"
+                >
+                  <CheckCircle2 size={20} /> Book This Vehicle
+                </a>
+              </div>
+
             </div>
           </div>
-
         </div>
       </div>
     </div>

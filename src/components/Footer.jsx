@@ -24,13 +24,12 @@ export default function Footer() {
             <p className="text-sm font-medium leading-relaxed text-slate-400 mt-2">
               Premium Cars, Tempos, and Buses for every journey. Experience seamless, safe, and comfortable travel across India with our high-end fleet and professional chauffeurs.
             </p>
-           {/* Updated Admin Login Button in Footer.jsx */}
-<a 
-  href="/coming-soon" 
-  className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-5 py-2.5 rounded-lg text-sm font-bold w-fit transition-all border border-slate-700 hover:border-blue-500 shadow-sm"
->
-  Admin Login
-</a>
+            <a 
+              href="/admin" 
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-5 py-2.5 rounded-lg text-sm font-bold w-fit transition-all border border-slate-700 hover:border-blue-500 shadow-sm"
+            >
+              Admin Login
+            </a>
           </div>
 
           {/* Column 2: Quick Links */}
@@ -122,9 +121,12 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-slate-800/80 flex flex-col lg:flex-row items-center justify-between gap-6 relative">
           <div className="w-full lg:w-1/3 flex justify-center lg:justify-start gap-4 text-sm font-medium text-slate-500">
-            <a href="/coming-soon" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+            
+            {/* UPDATED LINKS HERE */}
+            <a href="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
             <span>|</span>
-            <a href="/coming-soon" className="hover:text-slate-300 transition-colors">Terms & Conditions</a>
+            <a href="/terms-conditions" className="hover:text-slate-300 transition-colors">Terms & Conditions</a>
+            
           </div>
           
           <div className="w-full lg:w-1/3 flex justify-center">

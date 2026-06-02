@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X, Bell, ChevronRight, Phone } from "lucide-react"; 
+import { db } from "../firebase"; 
+import { ref, onValue } from "firebase/database"; 
 
 const navItems = [
   { 
@@ -44,21 +46,31 @@ const navItems = [
   { title: "Corporate", isMega: false, submenu: ["Employee Transport", "Event Logistics", "Long-term Leases"] },
   { title: "Offers", isMega: false, submenu: ["Current Discounts", "Festival Specials"] },
   { title: "About", isMega: false, submenu: ["Our History", "Safety Protocols", "Reviews"] },
-  { title: "Contact", isMega: false, submenu: ["Our Offices", "24/7 Helpline", "Quick Inquiry"] },
-  { title: "Careers", isMega: false, submenu: ["Open Positions", "Application Process", "Employee Benefits"] },
-];
-
-const updates = [
-  "🎉 Special Offer: Flat 15% off on Tempo Travellers!",
-  "✨ Brand New Volvo Sleepers added to fleet.",
-  "🚧 Route Update: Srisailam ghat road open 24/7.",
-  "💼 Dedicated travel desks now available for IT parks."
+  { title: "Contact", isMega: false, submenu: ["Our Offices", "24/7 Helpline", "Quick Inquiry"] }
 ];
 
 export default function Navbar() {
   const [hoveredMenu, setHoveredMenu] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMobileSub, setActiveMobileSub] = useState(null);
+  const [liveUpdates, setLiveUpdates] = useState(["Connecting to live feed..."]);
+
+  useEffect(() => {
+    const updatesRef = ref(db, "live_updates");
+    const unsubscribe = onValue(updatesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const formattedData = Object.keys(data).map(key => data[key]);
+        formattedData.sort((a, b) => b.timestamp - a.timestamp);
+        const messages = formattedData.map(item => item.text);
+        setLiveUpdates(messages.length > 0 ? messages : ["Welcome to VBR Travels! Stay tuned for updates."]);
+      } else {
+        setLiveUpdates(["Welcome to VBR Travels! Stay tuned for updates."]);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -71,22 +83,26 @@ export default function Navbar() {
 
   return (
     <>
-      {/* FIXED HEADER: Never moves on scroll */}
-      <header className="fixed top-0 left-0 w-full z-[100] flex flex-col shadow-lg shadow-slate-200/50">
+      {/* 1. SLIMMER HEADER: Reduced padding to make the navbar vertically shorter */}
+      <header className="fixed top-0 left-0 w-full z-[100] flex flex-col bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-sm">
         
-        {/* TOP ROW: Logo & Navigation */}
-        <div className="flex flex-row items-center justify-between w-full px-4 py-2 lg:px-8 lg:py-3 bg-white/95 backdrop-blur-md">
+        {/* Adjusted padding from py-4 to py-2.5 */}
+        <div className="flex flex-row items-center justify-between w-full max-w-[1700px] mx-auto px-4 py-2 lg:px-8 lg:py-2.5">
 
-          <a href="/" className="shrink-0 cursor-pointer group">
+          {/* Adjusted Logo size from w-20 to w-14 */}
+          <a href="/" className="shrink-0 cursor-pointer group flex items-center gap-3">
             <img 
               src="/vbr-logo.jpg" 
               alt="VBR Travels Logo" 
-              className="w-16 h-16 sm:w-20 sm:h-20 xl:w-24 xl:h-24 rounded-full bg-white object-cover border-2 border-slate-100 shadow-sm transition-transform duration-300 group-hover:scale-105"
+              className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full bg-white object-cover shadow-sm border border-slate-100 transition-transform duration-300 group-hover:scale-105"
             />
+            {/* Adjusted Brand text size */}
+            <span className="hidden xl:block font-black text-lg lg:text-xl tracking-tight text-slate-900">
+              VBR Tours & Travels
+            </span>
           </a>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden xl:flex relative items-center bg-slate-50/50 rounded-full px-4 py-1.5 border border-slate-100">
+          <nav className="hidden xl:flex relative items-center justify-center flex-1 px-8">
             {navItems.map((item, index) => {
               const isFarRight = index >= navItems.length - 2;
 
@@ -97,7 +113,7 @@ export default function Navbar() {
                   onMouseEnter={() => setHoveredMenu(index)}
                   onMouseLeave={() => setHoveredMenu(null)}
                 >
-                  <button className="flex items-center gap-1 px-3 py-2 text-[14px] font-bold text-slate-700 hover:text-blue-600 transition-colors whitespace-nowrap">
+                  <button className={`flex items-center gap-1.5 px-3 py-1.5 text-[13px] lg:text-[14px] font-bold transition-colors whitespace-nowrap rounded-xl ${hoveredMenu === index ? "text-blue-600 bg-blue-50/50" : "text-slate-600 hover:text-slate-900"}`}>
                     {item.title}
                     {item.submenu.length > 0 && (
                       <ChevronDown size={14} className={`transition-transform duration-300 ${hoveredMenu === index ? "rotate-180 text-blue-600" : "text-slate-400"}`} />
@@ -111,12 +127,12 @@ export default function Navbar() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.2, ease: "easeOut" }} 
-                        className={`absolute top-[calc(100%+8px)] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[160] ${
+                        className={`absolute top-[calc(100%+12px)] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[160] ${
                           item.isMega 
-                            ? 'w-[750px] p-6 left-0' 
+                            ? 'w-[750px] p-6 left-1/2 -translate-x-1/2' 
                             : isFarRight
-                              ? 'w-60 p-2 right-0' 
-                              : 'w-60 p-2 left-1/2 -translate-x-1/2' 
+                              ? 'w-64 p-2 right-0' 
+                              : 'w-64 p-2 left-1/2 -translate-x-1/2' 
                         }`}
                       >
                         <div className="absolute -top-4 left-0 w-full h-4 bg-transparent" />
@@ -133,7 +149,7 @@ export default function Navbar() {
                                     <a 
                                       key={i} 
                                       href="/coming-soon"
-                                      className="block px-2 py-2 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-800 rounded-lg transition-all cursor-pointer"
+                                      className="block px-2 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-700 rounded-lg transition-all cursor-pointer"
                                     >
                                       {subItem}
                                     </a>
@@ -147,7 +163,7 @@ export default function Navbar() {
                             <a 
                               key={i} 
                               href="/coming-soon"
-                              className="block px-4 py-3 text-sm font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-800 rounded-xl transition-all cursor-pointer"
+                              className="block px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-700 rounded-xl transition-all cursor-pointer"
                             >
                               {sub}
                             </a>
@@ -161,45 +177,57 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Mobile Hamburger Button */}
+          <div className="hidden xl:flex shrink-0">
+             <a 
+                href="https://wa.me/919866128901"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 bg-slate-900 hover:bg-blue-600 text-white px-5 py-2 rounded-full text-[13px] lg:text-[14px] font-black transition-all shadow-md shadow-slate-900/10 hover:shadow-blue-600/20 active:scale-95"
+              >
+                <Phone size={14} className="fill-white" /> Call Now
+              </a>
+          </div>
+
           <div className="xl:hidden flex justify-end">
             <button 
               onClick={() => setMobileMenuOpen(true)}
-              className="p-3 bg-slate-50 text-slate-800 hover:bg-slate-100 rounded-xl shadow-sm border border-slate-200 transition-colors"
+              className="p-2 bg-slate-50 text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
             >
-              <Menu size={24} />
+              <Menu size={22} />
             </button>
           </div>
         </div>
 
-        {/* BOTTOM ROW: Live Updates Ticker */}
-        <div className="w-full flex items-center overflow-hidden bg-slate-100/95 backdrop-blur-md border-t border-slate-200 py-2 px-4 lg:px-8">
-          <div className="flex items-center gap-1.5 pr-3 border-r border-slate-300 shrink-0 z-10">
-            <Bell size={14} className="text-blue-600" />
-            <span className="text-[10px] sm:text-xs font-black text-slate-800 tracking-wider uppercase">Live Updates</span>
+        {/* Adjusted ticker padding */}
+        <div className="w-full flex items-center overflow-hidden bg-slate-50 border-t border-slate-200 py-1.5 px-4 lg:px-8">
+          <div className="flex items-center gap-2 pr-4 border-r border-slate-300 shrink-0 z-10">
+            <Bell size={12} className="text-blue-600" />
+            <span className="text-[9px] sm:text-[10px] lg:text-[11px] font-black text-slate-800 tracking-wider uppercase">Live Updates</span>
           </div>
 
           <div 
             className="flex-1 overflow-hidden relative flex items-center h-full"
             style={{ maskImage: "linear-gradient(to right, transparent, black 2%, black 98%, transparent)" }}
           >
+            {/* 2. FASTER TICKER: Reduced duration from 35 to 20 for a snappier scroll speed */}
             <motion.div 
+              key={liveUpdates.join('-')} 
               animate={{ x: ["0%", "-50%"] }}
-              transition={{ duration: 35, repeat: Infinity, ease: "linear" }}
-              className="flex gap-10 pl-6 whitespace-nowrap"
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="flex gap-12 pl-8 whitespace-nowrap"
             >
-              {[...updates, ...updates].map((up, i) => (
-                <span key={i} className="text-[11px] sm:text-[13px] font-bold text-slate-700">{up}</span>
+              {/* To ensure seamless looping even with few messages, we map the array 4 times instead of 2 */}
+              {[...liveUpdates, ...liveUpdates, ...liveUpdates, ...liveUpdates].map((up, i) => (
+                <span key={i} className="text-[11px] sm:text-[12px] lg:text-[13px] font-semibold text-slate-700">{up}</span>
               ))}
             </motion.div>
           </div>
         </div>
       </header>
 
-      {/* Invisible Spacer */}
-      <div className="h-[116px] sm:h-[132px] xl:h-[148px] w-full shrink-0"></div>
+      {/* 3. REDUCED SPACER: To match the slimmer header */}
+      <div className="h-[95px] sm:h-[105px] lg:h-[115px] w-full shrink-0"></div>
 
-      {/* MOBILE BOTTOM SHEET */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
@@ -229,10 +257,8 @@ export default function Navbar() {
                 </button>
               </div>
 
-              {/* Scrollable Navigation Area */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-3">
                 {navItems.map((item, index) => (
-                  // THE CRITICAL FIX: 'shrink-0' stops Flexbox from crushing this item when another expands!
                   <div key={index} className="shrink-0 rounded-2xl border border-slate-100 overflow-hidden shadow-sm shadow-slate-100/50 bg-white">
                     <button 
                       onClick={() => setActiveMobileSub(activeMobileSub === index ? null : index)}
@@ -294,7 +320,6 @@ export default function Navbar() {
                 ))}
               </div>
 
-              {/* Sticky Mobile Footer Action */}
               <div className="p-6 bg-slate-50 border-t border-slate-100 shrink-0 pb-safe">
                 <a 
                   href="https://wa.me/919866128901"

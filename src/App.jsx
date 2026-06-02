@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
 import FeaturedGallery from "./components/FeaturedGallery"; // Acts as your Hero section
@@ -20,8 +20,14 @@ import Footer from "./components/Footer";
 import ComingSoon from "./components/ComingSoon";
 import VehicleDetails from "./components/VehicleDetails"; // NEW: For the dynamic interior pages
 
+// --- 1. NEW ADMIN & LEGAL IMPORTS ---
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
+import PrivacyPolicy from "./pages/PrivacyPolicy"; // <-- THE MISSING IMPORT IS ADDED HERE
+import TermsConditions from "./pages/TermsConditions";
+
 const Home = () => (
-  <main className="flex flex-col pt-4 md:pt-8 pb-0 overflow-x-hidden">
+  <div className="flex flex-col pt-4 md:pt-8 pb-0 overflow-x-hidden">
     
     {/* --- INTRO & ACTION --- */}
     <section id="hero"><FeaturedGallery /></section>
@@ -51,35 +57,54 @@ const Home = () => (
       <FacebookShowcase />
     </section>
 
-    {/* --- CLOSING OBJECTIONS & FOOTER --- */}
+    {/* --- CLOSING OBJECTIONS --- */}
     <section id="faq"><FAQ /></section>
     <section id="stats"><StatsBanner /></section>
-    <Footer />
-
-  </main>
+    
+  </div>
 );
 
-// 2. THE APP ROUTER
+// --- 2. LAYOUT WRAPPER TO HANDLE THE FOOTER ---
+function AppLayout() {
+  const location = useLocation();
+  
+  // Check if we are on the locked Admin Dashboard so we can hide the public footer
+  const isDashboard = location.pathname.includes("/admin/dashboard");
+
+  return (
+    // min-h-screen and flex-col are the magic rules that push the footer to the bottom!
+    <div className="flex flex-col min-h-screen w-full overflow-x-hidden relative">
+      
+      {/* Global Navbar */}
+      <Navbar />
+
+      {/* flex-1 forces this main area to stretch, taking up any leftover empty space */}
+      <main className="flex-1 flex flex-col w-full">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/fleet/:slug" element={<VehicleDetails />} />
+          <Route path="/coming-soon" element={<ComingSoon />} />
+          
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms-conditions" element={<TermsConditions />} />
+          
+          <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        </Routes>
+      </main>
+
+      {/* Global Footer: Displays on every page EXCEPT the Admin Dashboard */}
+      {!isDashboard && <Footer />}
+
+    </div>
+  );
+}
+
+// --- 3. THE APP ROUTER ---
 export default function App() {
   return (
     <Router>
-      {/* Global styling baseline */}
-     <div className="w-full pb-16 md:pb-20 lg:pb-24 overflow-hidden relative">
-        
-        {/* Navbar sits OUTSIDE the Routes so it appears on every single page */}
-        <Navbar />
-
-        {/* 3. Routing Logic */}
-        <Routes>
-          <Route path="/" element={<Home />} />
-          
-          {/* NEW: The dynamic route that generates your 22 individual vehicle pages */}
-          <Route path="/fleet/:slug" element={<VehicleDetails />} />
-          
-          <Route path="/coming-soon" element={<ComingSoon />} />
-        </Routes>
-
-      </div>
+      <AppLayout />
     </Router>
   );
 }
