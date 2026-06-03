@@ -16,7 +16,8 @@ export default function AdminMedia() {
   const tvThumbRef = useRef(null);
   const tvVideoRef = useRef(null);
 
-  const [momentFile, setMomentFile] = useState(null);
+  // States for files
+  const [momentFiles, setMomentFiles] = useState([]); // Now an Array for multiple images
   const [tvThumb, setTvThumb] = useState(null);
   const [tvVideo, setTvVideo] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -38,12 +39,35 @@ export default function AdminMedia() {
     return () => { unsubMoments(); unsubTv(); };
   }, []);
 
-  // NO SIZE LIMITS: Validation simplified to just accept the file
-  const handleImageChange = (e, setFileState) => {
+  // Handler for MULTIPLE Moments Images (Max 50)
+  const handleMomentsChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    if (files.length > 50) {
+      setUploadError("You can only select up to 50 images at once.");
+      setMomentFiles([]);
+      setPreviewUrl(null);
+      if (momentImageRef.current) momentImageRef.current.value = "";
+      return;
+    }
+
+    setUploadError("");
+    setMomentFiles(files);
+    
+    // Preview the first image if multiple are selected
+    if (files.length > 0) {
+      setPreviewUrl(URL.createObjectURL(files[0]));
+    } else {
+      setPreviewUrl(null);
+    }
+  };
+
+  // Handler for SINGLE TV Thumbnail
+  const handleTvThumbChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setUploadError("");
-      setFileState(file);
+      setTvThumb(file);
       setPreviewUrl(URL.createObjectURL(file));
     }
   };
@@ -53,25 +77,36 @@ export default function AdminMedia() {
     if (file) setTvVideo(file);
   };
 
+  // BATCH UPLOAD logic for Moments
   const handleUploadMoment = async (e) => {
     e.preventDefault();
-    if (!momentFile) return setUploadError("Please select an image.");
-    setLoading(true); setUploadError("");
+    if (momentFiles.length === 0) return setUploadError("Please select at least one image.");
+    setLoading(true); 
+    setUploadError("");
 
     try {
-      const fileName = `moments/${Date.now()}_${momentFile.name}`;
-      const snap = await uploadBytes(storageRef(storage, fileName), momentFile);
-      const url = await getDownloadURL(snap.ref);
+      // Upload all selected images concurrently
+      const uploadPromises = momentFiles.map(async (file, index) => {
+        const fileName = `moments/${Date.now()}_${index}_${file.name}`;
+        const snap = await uploadBytes(storageRef(storage, fileName), file);
+        const url = await getDownloadURL(snap.ref);
 
-      await push(dbRef(db, "captured_moments"), {
-        imageUrl: url,
-        storagePath: fileName,
-        timestamp: Date.now()
+        return push(dbRef(db, "captured_moments"), {
+          imageUrl: url,
+          storagePath: fileName,
+          timestamp: Date.now()
+        });
       });
 
-      setMomentFile(null); setPreviewUrl(null);
+      // Wait for all uploads to finish
+      await Promise.all(uploadPromises);
+
+      setMomentFiles([]); 
+      setPreviewUrl(null);
       if (momentImageRef.current) momentImageRef.current.value = "";
-    } catch (error) { setUploadError("Failed to upload moment."); }
+    } catch (error) { 
+      setUploadError("Failed to upload some moments."); 
+    }
     setLoading(false);
   };
 
@@ -158,23 +193,33 @@ export default function AdminMedia() {
           {activeTab === "moments" ? (
             <form onSubmit={handleUploadMoment} className="space-y-4">
               <div className={`border-2 border-dashed rounded-xl overflow-hidden relative transition-colors ${previewUrl ? 'border-blue-500 bg-slate-900' : 'border-slate-300 hover:border-slate-400 bg-white'}`} style={{ height: '180px' }}>
-                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, setMomentFile)} ref={momentImageRef} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover opacity-90" /> : (
+                {/* Added 'multiple' tag here */}
+                <input type="file" accept="image/*" multiple onChange={handleMomentsChange} ref={momentImageRef} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                {previewUrl ? (
+                  <div className="relative w-full h-full">
+                    <img src={previewUrl} className="w-full h-full object-cover opacity-90" />
+                    {momentFiles.length > 1 && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span className="text-white font-black text-2xl">+{momentFiles.length - 1} More</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                     <ImageIcon size={32} className="text-slate-300 mb-2" />
-                    <p className="text-xs font-bold text-slate-600">Select Photo</p>
+                    <p className="text-xs font-bold text-slate-600">Select Photos (Max 50)</p>
                     <p className="text-[10px] text-blue-500 font-bold mt-1">HIGH QUALITY ALLOWED</p>
                   </div>
                 )}
               </div>
-              <button type="submit" disabled={loading || !momentFile} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl shadow-lg transition-all disabled:opacity-50">
-                {loading ? "Uploading..." : "Publish Photo"}
+              <button type="submit" disabled={loading || momentFiles.length === 0} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl shadow-lg transition-all disabled:opacity-50">
+                {loading ? "Uploading..." : `Publish ${momentFiles.length > 0 ? momentFiles.length : ''} Photos`}
               </button>
             </form>
           ) : (
             <form onSubmit={handleUploadTv} className="space-y-4">
               <div className={`border-2 border-dashed rounded-xl overflow-hidden relative transition-colors ${previewUrl ? 'border-red-500 bg-slate-900' : 'border-slate-300 hover:border-slate-400 bg-white'}`} style={{ height: '140px' }}>
-                <input type="file" accept="image/*" onChange={(e) => handleImageChange(e, setTvThumb)} ref={tvThumbRef} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                <input type="file" accept="image/*" onChange={handleTvThumbChange} ref={tvThumbRef} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                 {previewUrl ? <img src={previewUrl} className="w-full h-full object-cover opacity-90" /> : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                     <ImageIcon size={32} className="text-slate-300 mb-2" />
