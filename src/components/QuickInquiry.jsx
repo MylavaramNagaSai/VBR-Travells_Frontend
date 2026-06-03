@@ -10,15 +10,12 @@ import {
   CheckCircle2,
   Zap
 } from "lucide-react";
-// 1. Import your Firebase configuration
-import { db } from "../firebase";
-import { ref, push, serverTimestamp } from "firebase/database";
 
 export default function QuickInquiry() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 2. Create state to hold the form data
+  // State to hold the form data
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -32,21 +29,32 @@ export default function QuickInquiry() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 3. Push data to Firebase on submit
+  // Format data and redirect to WhatsApp on submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Create a reference to an 'inquiries' folder in your database
-      const inquiriesRef = ref(db, 'inquiries');
-      
-      // Push the form data along with a server timestamp and a "new" status
-      await push(inquiriesRef, {
-        ...formData,
-        timestamp: serverTimestamp(),
-        status: "new" // Useful for your Admin Dashboard later!
-      });
+      // 1. REPLACE WITH YOUR WHATSAPP NUMBER
+      // Include country code (e.g., 91 for India) but NO '+' or spaces.
+      const whatsappNumber = "919866128901"; 
+
+      // 2. Construct the WhatsApp message with Markdown formatting
+      const whatsappMessage = `*New Quick Inquiry!* 🚀\n\n`
+        + `*Name:* ${formData.name}\n`
+        + `*Phone:* ${formData.phone}\n`
+        + `*Email:* ${formData.email || "Not Provided"}\n`
+        + `*Service Required:* ${formData.service}\n`
+        + `*Requirements:* ${formData.message}`;
+
+      // 3. Encode the message so it safely translates into a URL
+      const encodedMessage = encodeURIComponent(whatsappMessage);
+
+      // 4. Create the WhatsApp API link
+      const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+      // 5. Open WhatsApp in a new browser tab
+      window.open(whatsappUrl, '_blank');
 
       // Show success animation
       setIsSubmitted(true);
@@ -170,11 +178,11 @@ export default function QuickInquiry() {
                       className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-base rounded-xl px-5 py-4 focus:outline-none focus:ring-4 focus:ring-blue-600/10 focus:border-blue-600 transition-all font-medium appearance-none cursor-pointer"
                     >
                       <option value="" disabled>Select a service...</option>
-                      <option value="monthly">Monthly Rental</option>
-                      <option value="corporate">Corporate Staff Transport</option>
-                      <option value="student">Student / Industrial Visit</option>
-                      <option value="trip">Custom Trip Planning</option>
-                      <option value="other">Other Inquiry</option>
+                      <option value="Monthly Rental">Monthly Rental</option>
+                      <option value="Corporate Staff Transport">Corporate Staff Transport</option>
+                      <option value="Student / Industrial Visit">Student / Industrial Visit</option>
+                      <option value="Custom Trip Planning">Custom Trip Planning</option>
+                      <option value="Other Inquiry">Other Inquiry</option>
                     </select>
                   </div>
                 </div>
@@ -204,11 +212,11 @@ export default function QuickInquiry() {
                   className={`w-full font-black text-lg py-5 rounded-xl transition-all flex items-center justify-center gap-3 mt-4 group ${
                     isSubmitting 
                       ? "bg-slate-400 text-slate-100 cursor-not-allowed" 
-                      : "bg-slate-900 hover:bg-blue-600 text-white shadow-xl shadow-slate-900/20 hover:shadow-blue-600/30"
+                      : "bg-[#25D366] hover:bg-[#1DA851] text-white shadow-xl shadow-[#25D366]/20 hover:shadow-[#25D366]/40"
                   }`}
                 >
                   <Send size={20} className={!isSubmitting ? "group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" : ""} /> 
-                  {isSubmitting ? "Sending..." : "Send Inquiry Now"}
+                  {isSubmitting ? "Redirecting to WhatsApp..." : "Send via WhatsApp"}
                 </motion.button>
 
               </motion.form>
@@ -222,9 +230,9 @@ export default function QuickInquiry() {
                 <div className="w-24 h-24 bg-emerald-100 text-emerald-500 rounded-full flex items-center justify-center mb-6">
                   <CheckCircle2 size={48} />
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 mb-4">Inquiry Sent Successfully!</h3>
+                <h3 className="text-3xl font-black text-slate-900 mb-4">Opening WhatsApp!</h3>
                 <p className="text-lg text-slate-500 font-medium max-w-md mx-auto mb-8">
-                  Thank you for reaching out. Our dispatch team has received your request and will contact you shortly.
+                  Your inquiry is ready to send. Please hit 'Send' on WhatsApp to start our conversation!
                 </p>
                 <button 
                   onClick={() => setIsSubmitted(false)}

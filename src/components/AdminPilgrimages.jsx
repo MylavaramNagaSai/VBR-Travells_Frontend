@@ -36,17 +36,10 @@ export default function AdminPilgrimages() {
     return () => unsubscribe();
   }, []);
 
-  // 2. FILE VALIDATION
+  // 2. FILE SELECTION (Removed 200KB Limit)
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 200 * 1024) {
-        setUploadError("Image must be less than 200KB.");
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
       setUploadError("");
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
@@ -140,7 +133,6 @@ export default function AdminPilgrimages() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                   <ImageIcon size={32} className="text-slate-300 mb-2" />
                   <p className="text-xs font-bold text-slate-600">Upload Temple Image</p>
-                  <p className="text-[10px] text-slate-400 font-bold mt-1">MAX SIZE: 200KB</p>
                 </div>
               )}
             </div>

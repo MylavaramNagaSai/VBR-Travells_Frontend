@@ -1,20 +1,20 @@
 import { useState, useEffect } from "react";
 import { ref as dbRef, onValue, push, remove, set } from "firebase/database";
 import { db } from "../firebase";
-import { Plus, MapPin, Calendar, Car, User, Phone, AlertCircle, Trash2, Map, Save, AlertTriangle } from "lucide-react";
+import { Plus, MapPin, Calendar, Car, User, Phone, AlertCircle, Trash2, Edit, Map, AlertTriangle } from "lucide-react";
 
 export default function AdminTrips() {
   const [trips, setTrips] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
-  const [drivers, setDrivers] = useState([]);
-  const [baseTotal, setBaseTotal] = useState(0); 
-  const [isEditingTotal, setIsEditingTotal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formError, setFormError] = useState("");
+  
+  // Track if we are editing an existing trip
+  const [editingTripId, setEditingTripId] = useState(null);
 
+  // Updated state: using 'vehicleName' and 'driverName' for manual text input
   const [formData, setFormData] = useState({
-    vehicleId: "", driverId: "", startDate: "", endDate: "",
+    vehicleName: "", driverName: "", startDate: "", endDate: "",
     startPoint: "", endPoint: "", customerName: "", customerPhone: "",
     totalRent: "", advance: ""
   });
@@ -24,37 +24,22 @@ export default function AdminTrips() {
     const unsubscribeTrips = onValue(dbRef(db, "trips"), (snapshot) => {
       const data = snapshot.val();
       setTrips(data ? Object.keys(data).map(key => ({ id: key, ...data[key] })).sort((a, b) => new Date(b.startDate) - new Date(a.startDate)) : []);
+      setLoading(false);
     });
 
-    const unsubscribeVehicles = onValue(dbRef(db, "gallery_vehicles"), (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const vArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        setVehicles(vArray);
-        if (vArray.length > 0) setFormData(prev => ({ ...prev, vehicleId: vArray[0].id }));
-      }
-    });
-
-    const unsubscribeDrivers = onValue(dbRef(db, "drivers"), (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const dArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        setDrivers(dArray);
-        if (dArray.length > 0) setFormData(prev => ({ ...prev, driverId: dArray[0].id }));
-      }
-    });
-
-    const unsubscribeStats = onValue(dbRef(db, "site_stats/total_trips"), (snapshot) => {
-      setBaseTotal(snapshot.exists() ? snapshot.val() : 0);
-    });
-
-    setLoading(false);
-    return () => { unsubscribeTrips(); unsubscribeVehicles(); unsubscribeDrivers(); unsubscribeStats(); };
+    return () => unsubscribeTrips();
   }, []);
 
   const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  // 2. CONFLICT CHECKING
+  // Update Firebase Master Counter whenever trips length changes
+  useEffect(() => {
+    if (!loading) {
+      set(dbRef(db, "site_stats/total_trips"), trips.length);
+    }
+  }, [trips.length, loading]);
+
+  // 2. CONFLICT CHECKING (Updated for manual text inputs)
   const checkConflicts = () => {
     const newStart = new Date(formData.startDate).setHours(0, 0, 0, 0);
     const newEnd = new Date(formData.endDate).setHours(23, 59, 59, 999);
@@ -62,32 +47,35 @@ export default function AdminTrips() {
     if (newStart > newEnd) return "Return date cannot be before the starting date.";
 
     for (let trip of trips) {
+      // Skip conflict checking against itself if we are editing
+      if (editingTripId && trip.id === editingTripId) continue;
+
       const existingStart = new Date(trip.startDate).setHours(0, 0, 0, 0);
       const existingEnd = new Date(trip.endDate).setHours(23, 59, 59, 999);
       
       const isOverlapping = (newStart <= existingEnd) && (newEnd >= existingStart);
 
       if (isOverlapping) {
-        if (trip.vehicleId === formData.vehicleId) {
-          const v = vehicles.find(v => v.id === trip.vehicleId);
-          return `Vehicle Conflict: ${v?.name || "This vehicle"} is already booked during these dates.`;
+        // Check if the typed vehicle name matches an already booked vehicle in this timeframe
+        if (trip.vehicleName && trip.vehicleName.toLowerCase() === formData.vehicleName.toLowerCase().trim()) {
+          return `Vehicle Conflict: "${trip.vehicleName}" is already booked during these dates.`;
         }
-        if (trip.driverId === formData.driverId) {
-          const d = drivers.find(d => d.id === trip.driverId);
-          return `Driver Conflict: ${d?.name || "This driver"} is already assigned to a trip during these dates.`;
+        // Check if the typed driver name matches an already assigned driver in this timeframe
+        if (trip.driverName && trip.driverName.toLowerCase() === formData.driverName.toLowerCase().trim()) {
+          return `Driver Conflict: "${trip.driverName}" is already assigned to a trip during these dates.`;
         }
       }
     }
     return null;
   };
 
-  // 3. SUBMIT TRIP
+  // 3. SUBMIT OR UPDATE TRIP
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError("");
 
-    if (!formData.vehicleId || !formData.driverId) {
-      setFormError("You must add at least one Vehicle and one Driver to your databases first!");
+    if (!formData.vehicleName.trim() || !formData.driverName.trim()) {
+      setFormError("You must manually enter a Vehicle name and a Driver name.");
       return;
     }
 
@@ -99,22 +87,58 @@ export default function AdminTrips() {
 
     try {
       const balance = Number(formData.totalRent) - Number(formData.advance);
-      await push(dbRef(db, "trips"), { ...formData, balance: balance, timestamp: Date.now() });
-      await set(dbRef(db, "site_stats/total_trips"), Number(baseTotal) + 1);
       
-      setIsModalOpen(false);
-      setFormData(prev => ({
-        ...prev, startDate: "", endDate: "", startPoint: "", endPoint: "", customerName: "", customerPhone: "", totalRent: "", advance: ""
-      }));
+      // Clean up the text inputs before saving
+      const finalData = {
+        ...formData,
+        vehicleName: formData.vehicleName.trim(),
+        driverName: formData.driverName.trim(),
+        balance: balance,
+        timestamp: Date.now()
+      };
+
+      if (editingTripId) {
+        // UPDATE Existing Trip
+        await set(dbRef(db, `trips/${editingTripId}`), finalData);
+      } else {
+        // CREATE New Trip
+        await push(dbRef(db, "trips"), finalData);
+      }
+      
+      closeModal();
     } catch (error) { 
       setFormError("Failed to save trip. Check your connection."); 
     }
   };
 
-  // 4. COUNTER OVERRIDE
-  const handleSaveTotal = async () => {
-    await set(dbRef(db, "site_stats/total_trips"), Number(baseTotal));
-    setIsEditingTotal(false);
+  // 4. OPEN EDIT MODAL
+  const handleEdit = (trip) => {
+    setEditingTripId(trip.id);
+    setFormData({
+      vehicleName: trip.vehicleName || "",
+      driverName: trip.driverName || "",
+      startDate: trip.startDate || "",
+      endDate: trip.endDate || "",
+      startPoint: trip.startPoint || "",
+      endPoint: trip.endPoint || "",
+      customerName: trip.customerName || "",
+      customerPhone: trip.customerPhone || "",
+      totalRent: trip.totalRent || "",
+      advance: trip.advance || ""
+    });
+    setIsModalOpen(true);
+  };
+
+  // Helper to cleanly close modal and reset state
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingTripId(null);
+    setFormData({
+      vehicleName: "", driverName: "", 
+      startDate: "", endDate: "", startPoint: "", endPoint: "", 
+      customerName: "", customerPhone: "", totalRent: "", advance: ""
+    });
+    setFormError("");
   };
 
   // 5. DELETE SINGLE TRIP
@@ -124,7 +148,7 @@ export default function AdminTrips() {
     }
   };
 
-  // 6. CLEAR ALL TRIPS (For wiping out test data)
+  // 6. CLEAR ALL TRIPS
   const handleClearAll = async () => {
     if (window.confirm("WARNING: Are you sure you want to delete ALL trip data? This cannot be undone.")) {
       await remove(dbRef(db, "trips"));
@@ -136,34 +160,17 @@ export default function AdminTrips() {
   return (
     <div className="w-full flex flex-col h-[calc(100vh-120px)] space-y-6">
       
-      {/* 1. MASTER TRIP COUNTER SECTION */}
+      {/* 1. MASTER TRIP COUNTER SECTION (Automated based on trips.length) */}
       <div className="bg-slate-900 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xl shrink-0">
         <div>
           <h2 className="text-white font-black text-xl flex items-center gap-2 mb-1">
             <Map className="text-blue-500" /> Master Trip Counter
           </h2>
-          <p className="text-slate-400 text-sm font-medium">This number goes live on your public homepage stats.</p>
+          <p className="text-slate-400 text-sm font-medium">This number goes live on your public homepage stats and updates automatically based on rows below.</p>
         </div>
 
-        <div className="flex items-center gap-3 bg-slate-800 p-2 pl-6 rounded-xl w-full sm:w-auto">
-          {isEditingTotal ? (
-            <input 
-              type="number" 
-              value={baseTotal} 
-              onChange={(e) => setBaseTotal(e.target.value)}
-              className="bg-slate-950 text-white font-black text-2xl w-32 outline-none px-2 rounded-lg py-1 border border-blue-500"
-              autoFocus
-            />
-          ) : (
-            <span className="text-white font-black text-3xl tracking-tight">{Number(baseTotal).toLocaleString()}+</span>
-          )}
-          
-          <button 
-            onClick={() => isEditingTotal ? handleSaveTotal() : setIsEditingTotal(true)}
-            className={`p-3 rounded-lg font-bold transition-all ${isEditingTotal ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}
-          >
-            {isEditingTotal ? <Save size={18} /> : "Edit"}
-          </button>
+        <div className="flex items-center gap-3 bg-slate-800 p-2 px-6 rounded-xl w-full sm:w-auto">
+          <span className="text-white font-black text-3xl tracking-tight text-center w-full">{trips.length.toLocaleString()}</span>
         </div>
       </div>
 
@@ -174,7 +181,6 @@ export default function AdminTrips() {
           <p className="text-slate-500 font-medium text-sm">Combined data from Fleet, Driver Roster, and Bookings.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {/* NEW CLEAR ALL BUTTON */}
           <button 
             onClick={handleClearAll}
             disabled={trips.length === 0}
@@ -195,7 +201,6 @@ export default function AdminTrips() {
       {/* 3. SPREADSHEET TABLE */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex-1 overflow-hidden flex flex-col">
         <div className="overflow-x-auto flex-1">
-          {/* Removed extreme min-width so it fits better on the screen */}
           <table className="w-full text-left border-collapse min-w-max">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
               <tr>
@@ -205,7 +210,6 @@ export default function AdminTrips() {
                 <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest"><User size={14} className="inline mr-1"/> Driver</th>
                 <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest"><Phone size={14} className="inline mr-1"/> Customer</th>
                 <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Finance</th>
-                {/* Made Action column explicit */}
                 <th className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Action</th>
               </tr>
             </thead>
@@ -218,8 +222,6 @@ export default function AdminTrips() {
                 </tr>
               ) : (
                 trips.map(trip => {
-                  const v = vehicles.find(x => x.id === trip.vehicleId);
-                  const d = drivers.find(x => x.id === trip.driverId);
                   const isBalanceZero = Number(trip.balance) <= 0;
 
                   return (
@@ -227,7 +229,7 @@ export default function AdminTrips() {
                       
                       {/* Vehicle */}
                       <td className="px-4 py-3">
-                        <p className="font-bold text-slate-800 text-sm max-w-[150px] truncate">{v?.name || "Deleted Vehicle"}</p>
+                        <p className="font-bold text-slate-800 text-sm max-w-[150px] truncate">{trip.vehicleName || "Unknown Vehicle"}</p>
                       </td>
                       
                       {/* Dates */}
@@ -244,21 +246,14 @@ export default function AdminTrips() {
 
                       {/* Driver */}
                       <td className="px-4 py-3">
-                        {d ? (
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-slate-200 bg-slate-100 shadow-sm">
-                              {d.imageUrl ? <img src={d.imageUrl} alt={d.name} className="w-full h-full object-cover" /> : <User className="w-full h-full p-1.5 text-slate-400" />}
-                            </div>
-                            <div>
-                              <span className="block font-bold text-slate-800 text-sm whitespace-nowrap">{d.name}</span>
-                              <span className="block text-[10px] text-slate-500 font-bold uppercase whitespace-nowrap">
-                                {d.experience}
-                              </span>
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-slate-200 bg-slate-100 shadow-sm">
+                            <User className="w-full h-full p-1.5 text-slate-400" />
                           </div>
-                        ) : (
-                          <span className="text-sm font-bold text-red-500">Deleted Driver</span>
-                        )}
+                          <div>
+                            <span className="block font-bold text-slate-800 text-sm whitespace-nowrap">{trip.driverName || "Unknown Driver"}</span>
+                          </div>
+                        </div>
                       </td>
 
                       {/* Customer */}
@@ -267,7 +262,7 @@ export default function AdminTrips() {
                         <p className="text-xs text-slate-500 font-medium whitespace-nowrap">{trip.customerPhone || "N/A"}</p>
                       </td>
 
-                      {/* Finance (Combined to save horizontal space) */}
+                      {/* Finance */}
                       <td className="px-4 py-3 text-right">
                         <p className="text-[11px] text-slate-500 font-bold">Total: ₹{Number(trip.totalRent || 0).toLocaleString()}</p>
                         <p className="text-[11px] text-green-600 font-bold mb-1">Adv: ₹{Number(trip.advance || 0).toLocaleString()}</p>
@@ -276,15 +271,24 @@ export default function AdminTrips() {
                         </span>
                       </td>
 
-                      {/* DELETE BUTTON */}
-                      <td className="px-4 py-3 text-center">
-                        <button 
-                          onClick={() => handleDelete(trip.id)} 
-                          className="bg-white border border-slate-200 p-2 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm"
-                          title="Delete Row"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      {/* EDIT AND DELETE BUTTONS */}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button 
+                            onClick={() => handleEdit(trip)} 
+                            className="bg-white border border-slate-200 p-2 text-slate-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 rounded-lg transition-all shadow-sm"
+                            title="Edit Trip"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(trip.id)} 
+                            className="bg-white border border-slate-200 p-2 text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm"
+                            title="Delete Trip"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -295,13 +299,15 @@ export default function AdminTrips() {
         </div>
       </div>
 
-      {/* 4. NEW TRIP MODAL */}
+      {/* 4. NEW/EDIT TRIP MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
-              <h3 className="text-xl font-black text-slate-800">Add New Trip</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">Close</button>
+              <h3 className="text-xl font-black text-slate-800">
+                {editingTripId ? "Edit Trip" : "Add New Trip"}
+              </h3>
+              <button onClick={closeModal} className="text-slate-400 hover:text-slate-700 font-bold">Close</button>
             </div>
             
             <div className="p-6 overflow-y-auto">
@@ -314,19 +320,31 @@ export default function AdminTrips() {
 
               <form id="tripForm" onSubmit={handleSubmit} className="space-y-6">
                 
-                {/* Vehicle & Driver Lookups */}
+                {/* Manual Vehicle & Driver Inputs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vehicle (Live Roster)</label>
-                    <select name="vehicleId" value={formData.vehicleId} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
-                      {vehicles.length === 0 ? <option value="">No vehicles found</option> : vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-                    </select>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vehicle Entry (Manual)</label>
+                    <input 
+                      type="text" 
+                      required 
+                      name="vehicleName" 
+                      value={formData.vehicleName} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., SML EXCUTIVE COCH 39 SEATER" 
+                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium" 
+                    />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Driver (Live Roster)</label>
-                    <select name="driverId" value={formData.driverId} onChange={handleInputChange} className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium">
-                      {drivers.length === 0 ? <option value="">No drivers found</option> : drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </select>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Driver Name (Manual)</label>
+                    <input 
+                      type="text" 
+                      required 
+                      name="driverName" 
+                      value={formData.driverName} 
+                      onChange={handleInputChange} 
+                      placeholder="e.g., SK HABEEB BASHA" 
+                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium" 
+                    />
                   </div>
                 </div>
 
@@ -385,7 +403,7 @@ export default function AdminTrips() {
             
             <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0">
               <button form="tripForm" type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl shadow-lg transition-all">
-                Lock Booking & Save
+                {editingTripId ? "Update Trip" : "Lock Booking & Save"}
               </button>
             </div>
           </div>

@@ -14,7 +14,7 @@ export default function AdminBookings() {
     customerName: "",
     phone: "",
     destination: "",
-    vehicle: "Toyota Innova Crysta",
+    vehicle: "", // Set to empty string for manual entry
     date: "",
   });
 
@@ -51,7 +51,8 @@ export default function AdminBookings() {
         timestamp: Date.now()
       });
       setShowForm(false);
-      setNewBooking({ customerName: "", phone: "", destination: "", vehicle: "Toyota Innova Crysta", date: "" });
+      // Reset form on success
+      setNewBooking({ customerName: "", phone: "", destination: "", vehicle: "", date: "" });
     } catch (error) {
       console.error("Error adding booking:", error);
     } finally {
@@ -136,12 +137,15 @@ export default function AdminBookings() {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Vehicle Type</label>
-                <select value={newBooking.vehicle} onChange={e => setNewBooking({...newBooking, vehicle: e.target.value})} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all">
-                  <option>Toyota Innova Crysta (7-8 Seater)</option>
-                  <option>Force Urbania (17 Seater)</option>
-                  <option>Volvo Luxury Bus (29 Seater)</option>
-                  <option>Large Big Bus (41 Seater)</option>
-                </select>
+                {/* Changed from select to input */}
+                <input 
+                  type="text" 
+                  required 
+                  value={newBooking.vehicle} 
+                  onChange={e => setNewBooking({...newBooking, vehicle: e.target.value})} 
+                  className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" 
+                  placeholder="e.g., Toyota Innova Crysta / Custom Vehicle" 
+                />
               </div>
               <div className="md:col-span-2 flex justify-end mt-2">
                 <button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl text-sm font-black transition-colors shadow-lg shadow-blue-600/20 disabled:opacity-50">

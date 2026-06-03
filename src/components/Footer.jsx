@@ -1,6 +1,9 @@
+import { Link } from "react-router-dom";
 import { ChevronRight, MapPin, Phone, Mail } from "lucide-react";
 
 export default function Footer() {
+  const currentYear = new Date().getFullYear();
+
   return (
     <footer className="bg-[#0f172a] text-slate-300 pt-20 pb-8 mt-20 relative overflow-hidden">
       {/* Decorative Top Gradient Line */}
@@ -13,37 +16,54 @@ export default function Footer() {
           
           {/* Column 1: Brand */}
           <div className="flex flex-col gap-6">
-            <a href="/" className="flex items-center gap-4 cursor-pointer group w-fit">
+            <Link to="/" className="flex items-center gap-4 cursor-pointer group w-fit">
               <img 
                 src="/vbr-logo.jpg" 
                 alt="VBR Travels Logo" 
                 className="w-20 h-20 rounded-full bg-white object-cover border-2 border-slate-700 group-hover:border-blue-500 transition-colors shadow-lg shadow-black/50"
               />
               <span className="font-extrabold text-3xl tracking-tight text-white group-hover:text-blue-400 transition-colors">VBR Travels</span>
-            </a>
+            </Link>
             <p className="text-sm font-medium leading-relaxed text-slate-400 mt-2">
               Premium Cars, Tempos, and Buses for every journey. Experience seamless, safe, and comfortable travel across India with our high-end fleet and professional chauffeurs.
             </p>
-            <a 
-              href="/admin" 
+            <Link 
+              to="/admin" 
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white px-5 py-2.5 rounded-lg text-sm font-bold w-fit transition-all border border-slate-700 hover:border-blue-500 shadow-sm"
             >
               Admin Login
-            </a>
+            </Link>
           </div>
 
-          {/* Column 2: Quick Links */}
+          {/* Column 2: Explore */}
           <div>
             <h4 className="text-white font-bold text-lg mb-6 tracking-wide">Explore</h4>
             <ul className="flex flex-col gap-4">
-              {["Our Fleet", "Trending Destinations", "Spiritual Yatras", "Special Services", "Travel Stories", "Careers"].map((link) => (
-                <li key={link}>
-                  <a href="/coming-soon" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
-                    <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" />
-                    {link}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <Link to="/#fleet" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Our Fleet
+                </Link>
+              </li>
+              <li>
+                <Link to="/#destinations" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Trending Destinations
+                </Link>
+              </li>
+              <li>
+                <Link to="/#temples" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Spiritual Yatras
+                </Link>
+              </li>
+              <li>
+                <Link to="/#services" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Special Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/#stories" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Travel Stories
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -51,14 +71,26 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-bold text-lg mb-6 tracking-wide">Support</h4>
             <ul className="flex flex-col gap-4">
-              {["FAQs", "Cancellation Policy", "24/7 Helpline", "Report an Issue", "Lost & Found"].map((link) => (
-                <li key={link}>
-                  <a href="/coming-soon" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
-                    <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" />
-                    {link}
-                  </a>
-                </li>
-              ))}
+              <li>
+                <Link to="/#faq" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> FAQs
+                </Link>
+              </li>
+              <li>
+                <Link to="/about/safety-protocols" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Safety Protocols
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact/helpline" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> 24/7 Helpline
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact/quick-inquiry" className="text-sm font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-2 group">
+                  <ChevronRight size={14} className="text-blue-500 group-hover:translate-x-1 transition-transform" /> Quick Inquiry Form
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -122,10 +154,9 @@ export default function Footer() {
         <div className="pt-8 border-t border-slate-800/80 flex flex-col lg:flex-row items-center justify-between gap-6 relative">
           <div className="w-full lg:w-1/3 flex justify-center lg:justify-start gap-4 text-sm font-medium text-slate-500">
             
-            {/* UPDATED LINKS HERE */}
-            <a href="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+            <Link to="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
             <span>|</span>
-            <a href="/terms-conditions" className="hover:text-slate-300 transition-colors">Terms & Conditions</a>
+            <Link to="/terms-conditions" className="hover:text-slate-300 transition-colors">Terms & Conditions</Link>
             
           </div>
           
@@ -144,7 +175,7 @@ export default function Footer() {
           </div>
           
           <div className="w-full lg:w-1/3 flex justify-center lg:justify-end text-sm font-medium text-slate-500">
-            © {new Date().getFullYear()} VBR Tours & Travels. All rights reserved.
+            © {currentYear} VBR Tours & Travels. All rights reserved.
           </div>
         </div>
 

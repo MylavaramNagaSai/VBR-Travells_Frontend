@@ -39,10 +39,10 @@ const navItems = [
       { label: "Corporate rentals", path: "/services/corporate-rentals" }, 
       { label: "Students Industrial visits", path: "/services/student-industrial-visits" },
       { label: "Trips Planning", path: "/services/trips-planning" },
-      { label: "Customised services (All India Permit)", path: "/services/customised-services" }
+      { label: "Customised services", path: "/services/customised-services" }
     ] 
   },
-  { title: "Packages", isMega: false, submenu: ["Family Vacations", "Honeymoon Specials", "Custom Itineraries"] },
+  { title: "Packages", isMega: false, submenu: ["Family Vacations","Custom Itineraries"] },
   // REMOVED: Monthly Rentals, Corporate, and Offers from the top level
   { 
     title: "About", 

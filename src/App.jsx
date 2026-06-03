@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
@@ -11,9 +12,6 @@ import DriverRoster from "./components/DriverRoster";
 import TodaysInsight from "./components/TodaysInsight";
 import TravelStories from "./components/TravelStories";
 import MediaGallery from "./components/MediaGallery"; // Replaced GalleryShowcase
-import YouTubeShowcase from "./components/YouTubeShowcase";
-import InstagramShowcase from "./components/InstagramShowcase";
-import FacebookShowcase from "./components/FacebookShowcase";
 import FAQ from "./components/FAQ";
 import StatsBanner from "./components/StatsBanner";
 import Footer from "./components/Footer";
@@ -35,7 +33,8 @@ import SafetyProtocols from "./components/SafetyProtocols";
 import OurOffices from "./components/OurOffices";
 import Helpline from "./components/Helpline";
 import QuickInquiry from "./components/QuickInquiry";
-// Note: If you saved it in a 'pages' folder, use "./pages/MonthlyRentals" instead.
+import CorporateClients from "./components/CorporateClients";
+
 
 const Home = () => (
   <div className="flex flex-col pt-4 md:pt-8 pb-0 overflow-x-hidden">
@@ -60,12 +59,11 @@ const Home = () => (
     <section id="stories"><TravelStories /></section>
 
     {/* --- SOCIAL PROOF CLUSTER --- */}
-    {/* Grouped tightly together inside a padded grey background */}
     <section id="community" className="w-full py-16 md:py-20 lg:py-24 bg-slate-50/50 border-y border-slate-100 flex flex-col gap-12">
       <MediaGallery />
-      <YouTubeShowcase />
-      <InstagramShowcase />
-      <FacebookShowcase />
+    </section>
+    <section id="clients">
+      <CorporateClients />
     </section>
 
     {/* --- CLOSING OBJECTIONS --- */}
@@ -75,21 +73,39 @@ const Home = () => (
   </div>
 );
 
-// --- 2. LAYOUT WRAPPER TO HANDLE THE FOOTER ---
+// --- 2. LAYOUT WRAPPER TO HANDLE THE FOOTER & SCROLLING ---
 function AppLayout() {
   const location = useLocation();
   
-  // Check if we are on the locked Admin Dashboard so we can hide the public footer
-  const isDashboard = location.pathname.includes("/admin/dashboard");
+  // FIXED: Check if the current URL starts with '/admin' to hide the footer on ALL admin pages
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
+  // NEW: Global Scroll Handler for Hash Links and Page Changes
+  useEffect(() => {
+    if (location.hash) {
+      // If there is a # in the URL (e.g., /#fleet), find that ID
+      const id = location.hash.replace("#", "");
+      
+      // We use a small timeout to let the new page finish rendering the DOM
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 100);
+    } else {
+      // If there is no hash (a normal page change), scroll to the very top
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }
+  }, [location]);
 
   return (
-    // min-h-screen and flex-col are the magic rules that push the footer to the bottom!
     <div className="flex flex-col min-h-screen w-full overflow-x-hidden relative">
       
       {/* Global Navbar */}
       <Navbar />
 
-      {/* flex-1 forces this main area to stretch, taking up any leftover empty space */}
+      {/* Main Content Area */}
       <main className="flex-1 flex flex-col w-full">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -114,8 +130,8 @@ function AppLayout() {
         </Routes>
       </main>
 
-      {/* Global Footer: Displays on every page EXCEPT the Admin Dashboard */}
-      {!isDashboard && <Footer />}
+      {/* Global Footer: Displays on every page EXCEPT paths starting with /admin */}
+      {!isAdminRoute && <Footer />}
 
     </div>
   );

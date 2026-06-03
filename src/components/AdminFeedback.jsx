@@ -40,17 +40,10 @@ export default function AdminFeedback() {
     return () => unsubscribe();
   }, []);
 
-  // 2. IMAGE VALIDATION (200KB)
+  // 2. IMAGE HANDLING (Removed 200KB Limit)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 200 * 1024) {
-        setUploadError("Thumbnail image must be less than 200KB.");
-        setSelectedImage(null);
-        setPreviewUrl(null);
-        if (imageInputRef.current) imageInputRef.current.value = "";
-        return;
-      }
       setUploadError("");
       setSelectedImage(file);
       setPreviewUrl(URL.createObjectURL(file));
@@ -164,7 +157,6 @@ export default function AdminFeedback() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
                   <ImageIcon size={32} className="text-slate-300 mb-2" />
                   <p className="text-xs font-bold text-slate-600">Upload Trip Thumbnail</p>
-                  <p className="text-[10px] text-slate-400 font-bold mt-1">MAX SIZE: 200KB</p>
                 </div>
               )}
             </div>

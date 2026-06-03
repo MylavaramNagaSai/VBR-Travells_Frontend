@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { motion, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import { motion, useSpring, useTransform } from "framer-motion";
 import { db } from "../firebase"; 
-import { ref, onValue, onDisconnect, set, push, get, increment, update } from "firebase/database";
-import { Activity, Users, Globe, Map, MapPin, Navigation } from "lucide-react"; // Added MapPin & Navigation
+import { ref, onValue, set, push, get, increment, update, remove, serverTimestamp } from "firebase/database";
+import { Activity, Users, Globe } from "lucide-react";
 
 let hasCountedThisSession = false;
 
@@ -18,51 +18,65 @@ function AnimatedNumber({ value }) {
 }
 
 export default function LiveStats() {
-  // Added "trips" to the state (defaulting to 12500 until Firebase loads it)
-  const [stats, setStats] = useState({ live: 0, today: 0, total: 0, trips: 12500 });
-  const [recentRoutes, setRecentRoutes] = useState([]);
+  const [stats, setStats] = useState({ live: 0, today: 0, total: 0 });
 
   useEffect(() => {
-    const connectedRef = ref(db, ".info/connected");
     const liveViewersRef = ref(db, "live_viewers");
     const statsRef = ref(db, "site_stats");
+
+    // ==========================================
+    // 1. BULLETPROOF HEARTBEAT SYSTEM (Live Viewers)
+    // ==========================================
     
-    // --- 1. NEW: LISTEN TO TOTAL TRIPS COUNTER ---
-    const totalTripsRef = ref(db, "site_stats/total_trips");
-    const unsubscribeTrips = onValue(totalTripsRef, (snap) => {
-      if (snap.exists()) {
-        setStats((prev) => ({ ...prev, trips: snap.val() }));
-      }
-    });
+    // Create a unique ID for this specific browser session
+    const mySessionRef = push(liveViewersRef);
+    let heartbeatInterval;
 
-    // --- 2. NEW: LISTEN TO RECENT ROUTES ---
-    const routesRef = ref(db, "trips");
-    const unsubscribeRoutes = onValue(routesRef, (snap) => {
-      const data = snap.val();
-      if (data) {
-        // Convert to array and sort newest first
-        const formatted = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
-        setRecentRoutes(formatted);
-      } else {
-        setRecentRoutes([]);
-      }
-    });
+    const startHeartbeat = async () => {
+      // 1. Initial Ping
+      await set(mySessionRef, serverTimestamp());
 
-    // --- LIVE VIEWERS LOGIC ---
-    const myConnectionRef = push(liveViewersRef);
-    const unsubscribeConnected = onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
-        onDisconnect(myConnectionRef).remove();
-        set(myConnectionRef, true);
-      }
-    });
+      // 2. Ping the server every 10 seconds to say "I'm still here!"
+      heartbeatInterval = setInterval(() => {
+        set(mySessionRef, serverTimestamp());
+      }, 10000);
+    };
 
+    startHeartbeat();
+
+    // 3. Listen to all viewers and filter out the dead ones
     const unsubscribeLive = onValue(liveViewersRef, (snap) => {
-      const activeUsers = snap.val() ? Object.keys(snap.val()).length : 0;
-      setStats((prev) => ({ ...prev, live: activeUsers }));
+      const allUsers = snap.val();
+      if (!allUsers) {
+        setStats((prev) => ({ ...prev, live: 0 }));
+        return;
+      }
+
+      const now = Date.now();
+      let activeCount = 0;
+      const cutoffTime = now - 20000; // 20 seconds. If no ping in 20s, they are dead.
+
+      // Check everyone's last heartbeat
+      Object.entries(allUsers).forEach(([key, timestamp]) => {
+        // If the timestamp is valid and newer than 20 seconds ago, count them.
+        if (typeof timestamp === 'number' && timestamp > cutoffTime) {
+          activeCount++;
+        } else {
+          // Optional Cleanup: Delete dead ghost sessions from the database
+          if (typeof timestamp === 'number' && timestamp <= cutoffTime) {
+              remove(ref(db, `live_viewers/${key}`));
+          }
+        }
+      });
+
+      // Ensure we always show at least 1 viewer (the person looking at it)
+      setStats((prev) => ({ ...prev, live: Math.max(1, activeCount) }));
     });
 
-    // --- DAILY & TOTAL VISITORS LOGIC ---
+
+    // ==========================================
+    // 2. DAILY & TOTAL VISITORS LOGIC
+    // ==========================================
     const handleVisitStats = async () => {
       if (hasCountedThisSession) return;
       hasCountedThisSession = true;
@@ -105,13 +119,14 @@ export default function LiveStats() {
       }
     });
 
+    // ==========================================
+    // 3. CLEANUP PHASE
+    // ==========================================
     return () => {
-      unsubscribeConnected();
-      unsubscribeLive();
+      clearInterval(heartbeatInterval); // Stop sending heartbeats
+      unsubscribeLive(); // Stop listening
       unsubscribeStats();
-      unsubscribeTrips();
-      unsubscribeRoutes();
-      set(myConnectionRef, null); 
+      remove(mySessionRef); // Immediately delete this session on unmount
     };
   }, []);
 
@@ -119,58 +134,27 @@ export default function LiveStats() {
     { label: "Live Viewers", value: stats.live, iconColor: "text-emerald-500", icon: Activity },
     { label: "Today's Visitors", value: stats.today, iconColor: "text-blue-600", icon: Users },
     { label: "Total Visitors", value: stats.total, iconColor: "text-blue-600", icon: Globe },
-    { label: "Trips Planned", value: stats.trips, iconColor: "text-blue-600", icon: Map }, // <--- NOW DYNAMIC
   ];
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 mb-12 md:mb-16 relative z-10">
-      
-      {/* THE 2x2 STATS GRID */}
-      <div className="bg-slate-100 rounded-2xl md:rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden grid grid-cols-2 md:grid-cols-4 gap-px">
+    <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 mb-8 relative z-10">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-lg shadow-slate-200/50 overflow-hidden grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-100">
         {statItems.map((stat, i) => (
-          <div key={i} className="bg-white p-5 sm:p-6 md:py-10 flex flex-col items-center justify-center hover:bg-slate-50 transition-colors text-center h-full">
-            <stat.icon className={`w-5 h-5 md:w-7 md:h-7 ${stat.iconColor} mb-2 md:mb-4`} />
-            <div className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 mb-1 md:mb-2">
-              {stat.label === "Trips Planned" ? (
-                <><AnimatedNumber value={stat.value} />+</>
-              ) : stat.label === "Total Visitors" && stat.value > 1000 ? (
+          <div key={i} className="p-4 sm:p-5 flex flex-col items-center justify-center hover:bg-slate-50 transition-colors text-center h-full">
+            <stat.icon className={`w-4 h-4 md:w-5 md:h-5 ${stat.iconColor} mb-2`} />
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mb-1">
+              {stat.label === "Total Visitors" && stat.value > 1000 ? (
                 <><AnimatedNumber value={Math.floor(stat.value / 1000)} />K+</>
               ) : (
                 <AnimatedNumber value={stat.value} />
               )}
             </div>
-            <span className="text-[9px] sm:text-[10px] md:text-[11px] font-black text-slate-400 uppercase tracking-widest line-clamp-1 md:line-clamp-none">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               {stat.label}
             </span>
           </div>
         ))}
       </div>
-
-      {/* NEW: RECENT ROUTES TICKER */}
-      {recentRoutes.length > 0 && (
-        <div className="mt-4 md:mt-6 bg-white/90 backdrop-blur-md border border-slate-200 rounded-2xl p-3 sm:p-4 flex items-center overflow-hidden shadow-sm">
-          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 text-blue-600 font-black text-[10px] sm:text-xs uppercase tracking-widest border-r border-slate-200 pr-3 sm:pr-4 z-10 bg-white">
-            <MapPin size={14} /> <span className="hidden sm:inline">Recent</span> Routes
-          </div>
-          
-          <div className="flex-1 overflow-hidden relative flex items-center h-full ml-3 sm:ml-4" style={{ maskImage: "linear-gradient(to right, transparent, black 5%, black 95%, transparent)" }}>
-            <motion.div 
-              key={recentRoutes.length} // Forces re-render of animation when new route is added
-              animate={{ x: ["0%", "-50%"] }} 
-              transition={{ duration: 25, repeat: Infinity, ease: "linear" }} 
-              className="flex gap-8 pl-4 whitespace-nowrap"
-            >
-              {/* Duplicated for seamless scrolling */}
-              {[...recentRoutes, ...recentRoutes, ...recentRoutes].map((route, i) => (
-                <span key={i} className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5">
-                  {route.from} <Navigation size={12} className="rotate-90 text-slate-400" /> {route.to}
-                </span>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

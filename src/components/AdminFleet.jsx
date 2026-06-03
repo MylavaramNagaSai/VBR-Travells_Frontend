@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { ref as dbRef, onValue, push, remove } from "firebase/database";
+import { ref as dbRef, onValue, push, set, remove } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "../firebase";
-import { Bus, Plus, Trash2, Image as ImageIcon, Video, AlertCircle, UploadCloud, CheckCircle2 } from "lucide-react";
+import { Bus, Plus, Trash2, Edit, Image as ImageIcon, Video, AlertCircle, UploadCloud, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminFleet() {
   const [fleet, setFleet] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [editingVehicleId, setEditingVehicleId] = useState(null); // Tracks if we are editing
 
   // Form State
   const [name, setName] = useState("");
-  const [type, setType] = useState("LUXURY BUS"); // Category tag
+  const [type, setType] = useState("LUXURY BUS"); 
   const [numberPlate, setNumberPlate] = useState("");
   const [seats, setSeats] = useState("");
   const [beds, setBeds] = useState("0");
@@ -51,11 +52,7 @@ export default function AdminFleet() {
   // FILE HANDLERS
   const handleMainImage = (e) => {
     const file = e.target.files[0];
-    if (file && file.size > 200 * 1024) {
-      setUploadError("Main image must be less than 200KB.");
-      setMainImage(null);
-      if (mainImageRef.current) mainImageRef.current.value = "";
-    } else {
+    if (file) {
       setUploadError("");
       setMainImage(file);
     }
@@ -63,34 +60,59 @@ export default function AdminFleet() {
 
   const handleVideo = (e) => {
     const file = e.target.files[0];
-    if (file) setVideo(file); // Note: Videos are usually larger, you may want a higher limit here in production
+    if (file) setVideo(file); 
   };
 
   const handleInteriorImages = (e) => {
     const files = Array.from(e.target.files);
-    if (files.length > 10) {
-      setUploadError("Maximum 10 interior images allowed.");
-      if (interiorRef.current) interiorRef.current.value = "";
-      return;
-    }
-
-    const validFiles = [];
-    for (let file of files) {
-      if (file.size > 200 * 1024) {
-        setUploadError("One or more interior images exceed 200KB. Please resize them.");
-        if (interiorRef.current) interiorRef.current.value = "";
-        return;
-      }
-      validFiles.push(file);
-    }
-    
     setUploadError("");
-    setInteriorImages(validFiles);
+    setInteriorImages(files);
   };
 
-  // UPLOAD & SAVE
-  const handleAddVehicle = async (e) => {
+  // EDIT PRE-FILL
+  const handleEdit = (vehicle) => {
+    setEditingVehicleId(vehicle.id);
+    setName(vehicle.name);
+    setType(vehicle.type);
+    setNumberPlate(vehicle.numberPlate);
+    setSeats(vehicle.seats);
+    setBeds(vehicle.beds || "0");
+    setAc(vehicle.ac);
+    setPerKm(vehicle.perKm);
+    setPerDay(vehicle.perDay);
+    setWaitingCharge(vehicle.waitingCharge || "");
+    setLiveTracking(vehicle.liveTracking);
+
+    // Prompt user to re-upload files
+    setUploadError("Editing mode: Please re-select the Main Image (and any other media) before saving.");
+    setMainImage(null);
+    setVideo(null);
+    setInteriorImages([]);
+    
+    // Clear file inputs visually
+    if (mainImageRef.current) mainImageRef.current.value = "";
+    if (videoRef.current) videoRef.current.value = "";
+    if (interiorRef.current) interiorRef.current.value = "";
+    
+    // Scroll to form smoothly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetForm = () => {
+    setEditingVehicleId(null);
+    setName(""); setNumberPlate(""); setSeats(""); setBeds("0"); setPerKm(""); setPerDay(""); setWaitingCharge("");
+    setMainImage(null); setVideo(null); setInteriorImages([]);
+    setUploadError("");
+    if (mainImageRef.current) mainImageRef.current.value = "";
+    if (videoRef.current) videoRef.current.value = "";
+    if (interiorRef.current) interiorRef.current.value = "";
+  };
+
+  // UPLOAD & SAVE (Handles both New and Edits)
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Even when editing, we require re-uploading the image to ensure data integrity
     if (!mainImage || !name.trim() || !numberPlate.trim()) {
       setUploadError("Main Image, Name, and Number Plate are required.");
       return;
@@ -126,8 +148,7 @@ export default function AdminFleet() {
         interiorData.push({ url, path });
       }
 
-      // 4. Save to Database
-      await push(dbRef(db, "fleet"), {
+      const vehicleData = {
         name,
         type,
         numberPlate,
@@ -144,18 +165,33 @@ export default function AdminFleet() {
         videoPath,
         interiorImages: interiorData,
         timestamp
-      });
+      };
 
-      // Reset Form
-      setName(""); setNumberPlate(""); setSeats(""); setBeds("0"); setPerKm(""); setPerDay(""); setWaitingCharge("");
-      setMainImage(null); setVideo(null); setInteriorImages([]);
-      if (mainImageRef.current) mainImageRef.current.value = "";
-      if (videoRef.current) videoRef.current.value = "";
-      if (interiorRef.current) interiorRef.current.value = "";
+      if (editingVehicleId) {
+        // Find the old vehicle data to delete its old files first to save space
+        const oldVehicle = fleet.find(v => v.id === editingVehicleId);
+        if (oldVehicle) {
+          if (oldVehicle.mainImagePath) await deleteObject(storageRef(storage, oldVehicle.mainImagePath)).catch(() => {});
+          if (oldVehicle.videoPath) await deleteObject(storageRef(storage, oldVehicle.videoPath)).catch(() => {});
+          if (oldVehicle.interiorImages) {
+            for (let img of oldVehicle.interiorImages) {
+              await deleteObject(storageRef(storage, img.path)).catch(() => {});
+            }
+          }
+        }
+        
+        // Update the existing database entry
+        await set(dbRef(db, `fleet/${editingVehicleId}`), vehicleData);
+      } else {
+        // Create a new database entry
+        await push(dbRef(db, "fleet"), vehicleData);
+      }
+
+      resetForm();
 
     } catch (error) {
       console.error(error);
-      setUploadError("Failed to add vehicle. Check your connection and permissions.");
+      setUploadError("Failed to save vehicle. Check your connection and permissions.");
     } finally {
       setLoading(false);
     }
@@ -195,19 +231,27 @@ export default function AdminFleet() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* ADD VEHICLE FORM */}
+        {/* ADD/EDIT VEHICLE FORM */}
         <div className="xl:col-span-1 bg-slate-50 p-6 rounded-2xl border border-slate-200 h-fit">
-          <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
-            <UploadCloud size={18} className="text-blue-600" /> Add New Vehicle
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <UploadCloud size={18} className="text-blue-600" /> 
+              {editingVehicleId ? "Edit Vehicle" : "Add New Vehicle"}
+            </h3>
+            {editingVehicleId && (
+              <button onClick={resetForm} className="text-xs text-slate-500 hover:text-slate-800 font-bold underline">
+                Cancel Edit
+              </button>
+            )}
+          </div>
 
           {uploadError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-xs font-bold rounded-lg flex items-start gap-2">
+            <div className={`mb-4 p-3 border text-xs font-bold rounded-lg flex items-start gap-2 ${uploadError.includes("Editing mode") ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-red-50 border-red-200 text-red-600"}`}>
               <AlertCircle size={14} className="shrink-0 mt-0.5" /> {uploadError}
             </div>
           )}
 
-          <form onSubmit={handleAddVehicle} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Basic Info */}
             <div className="space-y-3">
@@ -278,11 +322,11 @@ export default function AdminFleet() {
             {/* Media Uploads */}
             <div className="space-y-3 pt-2 border-t border-slate-200">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><ImageIcon size={12}/> Main Image (Req, Max 200KB)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><ImageIcon size={12}/> Main Image (Required)</label>
                 <input type="file" accept="image/*" required ref={mainImageRef} onChange={handleMainImage} className="w-full mt-1 text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><ImageIcon size={12}/> Interior Images (Max 10, Max 200KB)</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><ImageIcon size={12}/> Interior Images</label>
                 <input type="file" accept="image/*" multiple ref={interiorRef} onChange={handleInteriorImages} className="w-full mt-1 text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
                 {interiorImages.length > 0 && <p className="text-[10px] text-green-600 font-bold mt-1">{interiorImages.length} images selected</p>}
               </div>
@@ -292,8 +336,8 @@ export default function AdminFleet() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="w-full bg-slate-900 hover:bg-black text-white font-black py-3 rounded-xl shadow-lg transition-all disabled:opacity-50 mt-4">
-              {loading ? "Uploading to Cloud..." : "Publish Vehicle"}
+            <button type="submit" disabled={loading} className={`w-full text-white font-black py-3 rounded-xl shadow-lg transition-all disabled:opacity-50 mt-4 ${editingVehicleId ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-900 hover:bg-black'}`}>
+              {loading ? "Saving to Cloud..." : (editingVehicleId ? "Update Vehicle" : "Publish Vehicle")}
             </button>
           </form>
         </div>
@@ -303,10 +347,11 @@ export default function AdminFleet() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <AnimatePresence>
               {fleet.map(vehicle => (
-                <motion.div key={vehicle.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col relative group">
+                <motion.div key={vehicle.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={`bg-white border rounded-2xl overflow-hidden shadow-sm flex flex-col relative group ${editingVehicleId === vehicle.id ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200'}`}>
                   
-                  <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleDelete(vehicle)} className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg shadow-lg"><Trash2 size={16} /></button>
+                  <div className="absolute top-2 right-2 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => handleEdit(vehicle)} className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg shadow-lg" title="Edit Vehicle"><Edit size={16} /></button>
+                    <button onClick={() => handleDelete(vehicle)} className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg shadow-lg" title="Delete Vehicle"><Trash2 size={16} /></button>
                   </div>
 
                   <div className="h-40 bg-slate-100 relative">
