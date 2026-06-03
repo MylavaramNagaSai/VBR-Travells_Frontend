@@ -18,13 +18,24 @@ import FAQ from "./components/FAQ";
 import StatsBanner from "./components/StatsBanner";
 import Footer from "./components/Footer";
 import ComingSoon from "./components/ComingSoon";
-import VehicleDetails from "./components/VehicleDetails"; // NEW: For the dynamic interior pages
+import VehicleDetails from "./components/VehicleDetails";
+import CorporateRentals from "./components/CorporateRentals"; 
+import StudentIndustrialVisits from "./components/StudentIndustrialVisits";
+import TripsPlanning from "./components/TripsPlanning"; 
+import CustomisedServices from "./components/CustomisedServices";// NEW: For the dynamic interior pages
 
 // --- 1. NEW ADMIN & LEGAL IMPORTS ---
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import PrivacyPolicy from "./pages/PrivacyPolicy"; // <-- THE MISSING IMPORT IS ADDED HERE
 import TermsConditions from "./pages/TermsConditions";
+import MonthlyRentals from "./components/MonthlyRentals"; 
+import OurHistory from "./components/OurHistory";
+import SafetyProtocols from "./components/SafetyProtocols";
+import OurOffices from "./components/OurOffices";
+import Helpline from "./components/Helpline";
+import QuickInquiry from "./components/QuickInquiry";
+// Note: If you saved it in a 'pages' folder, use "./pages/MonthlyRentals" instead.
 
 const Home = () => (
   <div className="flex flex-col pt-4 md:pt-8 pb-0 overflow-x-hidden">
@@ -90,6 +101,16 @@ function AppLayout() {
           
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/services/monthly-rentals" element={<MonthlyRentals />} />
+          <Route path="/services/corporate-rentals" element={<CorporateRentals />} />
+          <Route path="/services/student-industrial-visits" element={<StudentIndustrialVisits />} />
+          <Route path="/services/trips-planning" element={<TripsPlanning />} />
+          <Route path="/services/customised-services" element={<CustomisedServices />} />
+          <Route path="/about/our-history" element={<OurHistory />} />
+          <Route path="/about/safety-protocols" element={<SafetyProtocols />} />
+          <Route path="/contact/our-offices" element={<OurOffices />} />
+          <Route path="/contact/helpline" element={<Helpline />} />
+          <Route path="/contact/quick-inquiry" element={<QuickInquiry />} />
         </Routes>
       </main>
 

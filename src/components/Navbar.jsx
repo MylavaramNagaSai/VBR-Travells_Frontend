@@ -1,60 +1,79 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom"; 
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Menu, X, Bell, ChevronRight, Phone } from "lucide-react"; 
 import { db } from "../firebase"; 
 import { ref, onValue } from "firebase/database"; 
 
+// Base static nav items (Fleet, Tourist Places, and Devotional Places will be overwritten by live data)
 const navItems = [
   { 
     title: "Fleet", 
     isMega: true, 
     submenu: [
-      {
-        category: "SUVs & Premium MUVs",
-        items: [
-          "Toyota Innova Crysta (7 to 8 Seater)", 
-          "Kia Carens (7 Seater)", 
-          "Mahindra Xylo (8 Seater)", 
-          "Toyota Rumion (7 Seater)"
-        ]
-      },
-      {
-        category: "Tempo Travellers",
-        items: [
-          "Force Urbania 2025 (17 Seater)", 
-          "Compact Travellers (10 to 14 Seater)", 
-          "Standard Traveller (18 Seater Pushback)", 
-          "Large Travellers (26 to 27 Seater)"
-        ]
-      },
-      {
-        category: "Buses & Coaches",
-        items: [
-          "SML Mini Buses (22 Seater)", 
-          "Volvo Luxury Bus (29 Seater)", 
-          "SML Executive Coaches (39 Seater)", 
-          "Large Big Buses (41 Seater A/C & Non-A/C)"
-        ]
-      }
+      { category: "SUVs & Premium MUVs", items: ["Loading..."] },
+      { category: "Tempo Travellers", items: ["Loading..."] },
+      { category: "Buses & Coaches", items: ["Loading..."] }
     ]
   },
-  { title: "Tourist Places", isMega: false, submenu: ["Hill Stations", "Coastal Tours", "Heritage Sites", "Wildlife Tours"] },
-  { title: "Devotional Places", isMega: false, submenu: ["Tirupati Darshan", "Srisailam Tours", "Pancharama Kshetras"] },
-  { title: "Services", isMega: false, submenu: ["Local Sightseeing", "Outstation Trips", "Airport Transfers"] },
+  { 
+    title: "Tourist Places", 
+    isMega: true, 
+    submenu: [
+      { category: "Loading Destinations", items: ["Connecting to live feed..."] }
+    ] 
+  },
+  { 
+    title: "Devotional Places", 
+    isMega: true, 
+    submenu: [
+      { category: "Loading Pilgrimages", items: ["Connecting to live feed..."] }
+    ] 
+  },
+  { 
+    title: "Services", 
+    isMega: false, 
+    // UPDATED: New customized services menu
+    submenu: [
+      { label: "Monthly rentals", path: "/services/monthly-rentals" },
+      { label: "Corporate rentals", path: "/services/corporate-rentals" }, 
+      { label: "Students Industrial visits", path: "/services/student-industrial-visits" },
+      { label: "Trips Planning", path: "/services/trips-planning" },
+      { label: "Customised services (All India Permit)", path: "/services/customised-services" }
+    ] 
+  },
   { title: "Packages", isMega: false, submenu: ["Family Vacations", "Honeymoon Specials", "Custom Itineraries"] },
-  { title: "Monthly Rentals", isMega: false, submenu: ["Pricing", "Booking", "Terms & Conditions"] },
-  { title: "Corporate", isMega: false, submenu: ["Employee Transport", "Event Logistics", "Long-term Leases"] },
-  { title: "Offers", isMega: false, submenu: ["Current Discounts", "Festival Specials"] },
-  { title: "About", isMega: false, submenu: ["Our History", "Safety Protocols", "Reviews"] },
-  { title: "Contact", isMega: false, submenu: ["Our Offices", "24/7 Helpline", "Quick Inquiry"] }
+  // REMOVED: Monthly Rentals, Corporate, and Offers from the top level
+  { 
+    title: "About", 
+    isMega: false, 
+    submenu: [
+      { label: "Our History", path: "/about/our-history" }, // <-- Updated line!
+      { label: "Safety Protocols", path: "/about/safety-protocols" },
+    ] 
+  },
+  { 
+    title: "Contact", 
+    isMega: false, 
+    submenu: [
+      { label: "Our Offices", path: "/contact/our-offices" }, // <-- Updated line!
+      { label: "24/7 Helpline", path: "/contact/helpline" }, 
+      { label: "Quick Inquiry", path: "/contact/quick-inquiry" }
+    ] 
+  }
 ];
 
 export default function Navbar() {
   const [hoveredMenu, setHoveredMenu] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeMobileSub, setActiveMobileSub] = useState(null);
+  
   const [liveUpdates, setLiveUpdates] = useState(["Connecting to live feed..."]);
+  const [dynamicFleetMenu, setDynamicFleetMenu] = useState(navItems[0].submenu);
+  const [dynamicDestinations, setDynamicDestinations] = useState([]);
+  const [dynamicPilgrimages, setDynamicPilgrimages] = useState([]);
 
+  // 1. FETCH LIVE UPDATES (TICKER)
   useEffect(() => {
     const updatesRef = ref(db, "live_updates");
     const unsubscribe = onValue(updatesRef, (snapshot) => {
@@ -68,43 +87,147 @@ export default function Navbar() {
         setLiveUpdates(["Welcome to VBR Travels! Stay tuned for updates."]);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
+  // 2. FETCH LIVE FLEET
   useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
+    const fleetRef = ref(db, "fleet");
+    const unsubscribe = onValue(fleetRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const grouped = {
+          "SUVs & Premium MUVs": [],
+          "Tempo Travellers": [],
+          "Buses & Coaches": []
+        };
+
+        Object.entries(data).forEach(([id, vehicle]) => {
+          const seatsText = vehicle.seats && vehicle.seats !== "0" ? `(${vehicle.seats} Seater)` : '';
+          const label = `${vehicle.name} ${seatsText}`.trim();
+          const path = `/fleet/${id}`;
+          const tag = (vehicle.categoryTag || vehicle.type || "").toLowerCase();
+
+          if (tag.includes("bus") || tag.includes("coach") || tag.includes("large")) {
+            grouped["Buses & Coaches"].push({ label, path });
+          } else if (tag.includes("tempo") || tag.includes("traveller")) {
+            grouped["Tempo Travellers"].push({ label, path });
+          } else {
+            grouped["SUVs & Premium MUVs"].push({ label, path });
+          }
+        });
+
+        setDynamicFleetMenu([
+          { category: "SUVs & Premium MUVs", items: grouped["SUVs & Premium MUVs"] },
+          { category: "Tempo Travellers", items: grouped["Tempo Travellers"] },
+          { category: "Buses & Coaches", items: grouped["Buses & Coaches"] }
+        ]);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 3. FETCH LIVE TOURIST PLACES 
+  useEffect(() => {
+    const destRef = ref(db, "destinations"); 
+    const unsubscribe = onValue(destRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const groupedByState = {};
+        
+        Object.entries(data).forEach(([id, dest]) => {
+          const label = dest.name || dest.title || "Tourist Destination";
+          const path = `/destinations/${id}`;
+          const stateName = dest.state || "Other Destinations"; 
+          
+          if (!groupedByState[stateName]) {
+            groupedByState[stateName] = [];
+          }
+          groupedByState[stateName].push({ label, path });
+        });
+        
+        const destinationsMenu = Object.keys(groupedByState).map(state => ({
+          category: state,
+          items: groupedByState[state]
+        }));
+        
+        setDynamicDestinations(destinationsMenu);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 4. FETCH LIVE DEVOTIONAL PLACES (PILGRIMAGES)
+  useEffect(() => {
+    const pilgrimagesRef = ref(db, "pilgrimages"); 
+    const unsubscribe = onValue(pilgrimagesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const groupedByState = {};
+        
+        Object.entries(data).forEach(([id, place]) => {
+          const label = place.name || place.title || "Devotional Place";
+          const path = `/pilgrimages/${id}`; 
+          const stateName = place.state || "Other Devotional Places"; 
+          
+          if (!groupedByState[stateName]) {
+            groupedByState[stateName] = [];
+          }
+          groupedByState[stateName].push({ label, path });
+        });
+        
+        const pilgrimagesMenu = Object.keys(groupedByState).map(state => ({
+          category: state,
+          items: groupedByState[state]
+        }));
+        
+        setDynamicPilgrimages(pilgrimagesMenu);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 5. MERGE ALL LIVE DATA INTO NAV ITEMS
+  const finalNavItems = navItems.map(item => {
+    if (item.title === "Fleet") {
+      return { ...item, submenu: dynamicFleetMenu };
     }
+    if (item.title === "Tourist Places" && dynamicDestinations.length > 0) {
+      return { ...item, submenu: dynamicDestinations };
+    }
+    if (item.title === "Devotional Places" && dynamicPilgrimages.length > 0) {
+      return { ...item, submenu: dynamicPilgrimages };
+    }
+    return item;
+  });
+
+  // Lock body scroll on mobile menu open
+  useEffect(() => {
+    if (mobileMenuOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "unset";
     return () => { document.body.style.overflow = "unset"; };
   }, [mobileMenuOpen]);
 
   return (
     <>
-      {/* 1. SLIMMER HEADER: Reduced padding to make the navbar vertically shorter */}
       <header className="fixed top-0 left-0 w-full z-[100] flex flex-col bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-sm">
-        
-        {/* Adjusted padding from py-4 to py-2.5 */}
         <div className="flex flex-row items-center justify-between w-full max-w-[1700px] mx-auto px-4 py-2 lg:px-8 lg:py-2.5">
 
-          {/* Adjusted Logo size from w-20 to w-14 */}
-          <a href="/" className="shrink-0 cursor-pointer group flex items-center gap-3">
+          <Link to="/" className="shrink-0 cursor-pointer group flex items-center gap-2 sm:gap-3">
             <img 
               src="/vbr-logo.jpg" 
               alt="VBR Travels Logo" 
               className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full bg-white object-cover shadow-sm border border-slate-100 transition-transform duration-300 group-hover:scale-105"
             />
-            {/* Adjusted Brand text size */}
-            <span className="hidden xl:block font-black text-lg lg:text-xl tracking-tight text-slate-900">
+            {/* Kept the fix for mobile text sizing */}
+            <span className="block font-black text-base sm:text-lg lg:text-xl tracking-tight text-slate-900">
               VBR Tours & Travels
             </span>
-          </a>
+          </Link>
 
-          <nav className="hidden xl:flex relative items-center justify-center flex-1 px-8">
-            {navItems.map((item, index) => {
-              const isFarRight = index >= navItems.length - 2;
+          <nav className="hidden xl:flex relative items-center justify-center flex-1 px-8 gap-6 xl:gap-10">
+            {finalNavItems.map((item, index) => {
+              const isFarRight = index >= finalNavItems.length - 2;
 
               return (
                <div 
@@ -129,7 +252,7 @@ export default function Navbar() {
                         transition={{ duration: 0.2, ease: "easeOut" }} 
                         className={`absolute top-[calc(100%+12px)] bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-hidden z-[160] ${
                           item.isMega 
-                            ? 'w-[750px] p-6 left-1/2 -translate-x-1/2' 
+                            ? 'w-[800px] p-6 left-1/2 -translate-x-1/2' 
                             : isFarRight
                               ? 'w-64 p-2 right-0' 
                               : 'w-64 p-2 left-1/2 -translate-x-1/2' 
@@ -138,36 +261,46 @@ export default function Navbar() {
                         <div className="absolute -top-4 left-0 w-full h-4 bg-transparent" />
 
                         {item.isMega ? (
-                          <div className="grid grid-cols-3 gap-8">
+                          <div className="flex flex-wrap gap-8">
                             {item.submenu.map((col, idx) => (
-                              <div key={idx} className="flex flex-col">
+                              <div key={idx} className="flex flex-col flex-1 min-w-[200px]">
                                 <h4 className="text-xs font-black text-blue-600 uppercase tracking-wider mb-4 px-2 border-b border-slate-100 pb-2">
                                   {col.category}
                                 </h4>
                                 <div className="flex flex-col gap-1">
-                                  {col.items.map((subItem, i) => (
-                                    <a 
-                                      key={i} 
-                                      href="/coming-soon"
-                                      className="block px-2 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-700 rounded-lg transition-all cursor-pointer"
-                                    >
-                                      {subItem}
-                                    </a>
-                                  ))}
+                                  {col.items.map((subItem, i) => {
+                                    const label = typeof subItem === 'string' ? subItem : subItem.label;
+                                    const path = typeof subItem === 'string' ? "/coming-soon" : subItem.path;
+                                    return (
+                                      <Link 
+                                        key={i} 
+                                        to={path}
+                                        onClick={() => setHoveredMenu(null)}
+                                        className="block px-2 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-700 rounded-lg transition-all cursor-pointer"
+                                      >
+                                        {label}
+                                      </Link>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          item.submenu.map((sub, i) => (
-                            <a 
-                              key={i} 
-                              href="/coming-soon"
-                              className="block px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-700 rounded-xl transition-all cursor-pointer"
-                            >
-                              {sub}
-                            </a>
-                          ))
+                          item.submenu.map((sub, i) => {
+                            const label = typeof sub === 'string' ? sub : sub.label;
+                            const path = typeof sub === 'string' ? "/coming-soon" : sub.path;
+                            return (
+                              <Link 
+                                key={i} 
+                                to={path}
+                                onClick={() => setHoveredMenu(null)}
+                                className="block px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-blue-700 rounded-xl transition-all cursor-pointer"
+                              >
+                                {label}
+                              </Link>
+                            );
+                          })
                         )}
                       </motion.div>
                     )}
@@ -198,7 +331,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Adjusted ticker padding */}
         <div className="w-full flex items-center overflow-hidden bg-slate-50 border-t border-slate-200 py-1.5 px-4 lg:px-8">
           <div className="flex items-center gap-2 pr-4 border-r border-slate-300 shrink-0 z-10">
             <Bell size={12} className="text-blue-600" />
@@ -209,14 +341,12 @@ export default function Navbar() {
             className="flex-1 overflow-hidden relative flex items-center h-full"
             style={{ maskImage: "linear-gradient(to right, transparent, black 2%, black 98%, transparent)" }}
           >
-            {/* 2. FASTER TICKER: Reduced duration from 35 to 20 for a snappier scroll speed */}
             <motion.div 
               key={liveUpdates.join('-')} 
               animate={{ x: ["0%", "-50%"] }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="flex gap-12 pl-8 whitespace-nowrap"
             >
-              {/* To ensure seamless looping even with few messages, we map the array 4 times instead of 2 */}
               {[...liveUpdates, ...liveUpdates, ...liveUpdates, ...liveUpdates].map((up, i) => (
                 <span key={i} className="text-[11px] sm:text-[12px] lg:text-[13px] font-semibold text-slate-700">{up}</span>
               ))}
@@ -225,7 +355,6 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* 3. REDUCED SPACER: To match the slimmer header */}
       <div className="h-[95px] sm:h-[105px] lg:h-[115px] w-full shrink-0"></div>
 
       <AnimatePresence>
@@ -258,7 +387,7 @@ export default function Navbar() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-3">
-                {navItems.map((item, index) => (
+                {finalNavItems.map((item, index) => (
                   <div key={index} className="shrink-0 rounded-2xl border border-slate-100 overflow-hidden shadow-sm shadow-slate-100/50 bg-white">
                     <button 
                       onClick={() => setActiveMobileSub(activeMobileSub === index ? null : index)}
@@ -290,28 +419,38 @@ export default function Navbar() {
                                   <div className="px-6 py-2.5 text-[11px] font-black text-blue-600 uppercase tracking-widest bg-blue-50/40">
                                     {col.category}
                                   </div>
-                                  {col.items.map((subItem, i) => (
-                                    <a 
-                                      key={i} 
-                                      href="/coming-soon"
-                                      className="block p-4 pl-8 text-sm font-semibold text-slate-600 border-t border-slate-50 active:bg-blue-50 active:text-blue-700 transition-colors cursor-pointer"
-                                    >
-                                      {subItem}
-                                    </a>
-                                  ))}
+                                  {col.items.map((subItem, i) => {
+                                    const label = typeof subItem === 'string' ? subItem : subItem.label;
+                                    const path = typeof subItem === 'string' ? "/coming-soon" : subItem.path;
+                                    return (
+                                      <Link 
+                                        key={i} 
+                                        to={path}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="block p-4 pl-8 text-sm font-semibold text-slate-600 border-t border-slate-50 active:bg-blue-50 active:text-blue-700 transition-colors cursor-pointer"
+                                      >
+                                        {label}
+                                      </Link>
+                                    );
+                                  })}
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            item.submenu.map((sub, i) => (
-                              <a 
-                                key={i} 
-                                href="/coming-soon"
-                                className="block p-4 pl-8 text-sm font-semibold text-slate-600 border-t border-slate-50 active:bg-blue-50 active:text-blue-700 transition-colors cursor-pointer"
-                              >
-                                {sub}
-                              </a>
-                            ))
+                            item.submenu.map((sub, i) => {
+                              const label = typeof sub === 'string' ? sub : sub.label;
+                              const path = typeof sub === 'string' ? "/coming-soon" : sub.path;
+                              return (
+                                <Link 
+                                  key={i} 
+                                  to={path}
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className="block p-4 pl-8 text-sm font-semibold text-slate-600 border-t border-slate-50 active:bg-blue-50 active:text-blue-700 transition-colors cursor-pointer"
+                                >
+                                  {label}
+                                </Link>
+                              );
+                            })
                           )}
                         </motion.div>
                       )}
