@@ -42,64 +42,67 @@ const getWhatsAppLink = (driver) => {
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 };
 
-// --- Components ---
-
+// --- UPDATED CIRCULAR DRIVER CARD COMPONENT ---
 const DriverCard = ({ driver }) => {
   return (
-    <div className="relative w-48 h-72 md:w-64 md:h-[340px] rounded-2xl overflow-hidden shadow-lg shadow-slate-200/50 border border-slate-100 bg-slate-900 group shrink-0 cursor-pointer">
+    <div className="w-56 md:w-64 bg-white rounded-[2rem] overflow-hidden shadow-lg shadow-slate-200/50 border border-slate-100 flex flex-col items-center p-6 shrink-0 relative group transition-transform duration-300 hover:-translate-y-1">
       
-      {/* Dynamic Image from Firebase */}
-      {driver.imageUrl ? (
-        <img
-          src={driver.imageUrl}
-          alt={driver.name}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 pointer-events-none opacity-80 group-hover:opacity-100"
-          loading="lazy"
-          draggable="false"
-        />
-      ) : (
-        <div className="w-full h-full bg-gradient-to-br from-blue-700 to-indigo-900 flex items-center justify-center pointer-events-none">
-          <span className="text-white text-5xl md:text-6xl font-black tracking-widest opacity-30">
-            {getInitials(driver.name)}
-          </span>
-        </div>
-      )}
-
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent pointer-events-none" />
-
-      <div className="absolute top-3 right-3 bg-blue-600/90 backdrop-blur-sm text-white text-[9px] md:text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-blue-400/30 z-10 shadow-sm">
+      {/* Pro Badge */}
+      <div className="absolute top-4 right-4 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full flex items-center gap-1 z-10 border border-blue-100 shadow-sm">
         <ShieldCheck size={12} /> Pro
       </div>
 
-      <div className="absolute inset-0 p-4 flex flex-col justify-end pointer-events-none">
-        <h3 className="text-[15px] md:text-[17px] font-black text-white leading-tight mb-2 line-clamp-1 drop-shadow-md">
+      {/* Circular Image Container */}
+      <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white shadow-md shadow-slate-200 mb-5 relative z-10 bg-slate-100 shrink-0 group-hover:scale-105 transition-transform duration-300">
+        {driver.imageUrl ? (
+          <img
+            src={driver.imageUrl}
+            alt={driver.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            draggable="false"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center">
+            <span className="text-white text-3xl font-black tracking-widest opacity-50">
+              {getInitials(driver.name)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Details Section */}
+      <div className="flex flex-col items-center text-center w-full mb-6 flex-1">
+        <h3 className="text-lg md:text-xl font-black text-slate-800 mb-4 truncate w-full">
           {driver.name}
         </h3>
 
-        <div className="flex flex-col gap-1.5 mb-4">
-          <div className="flex items-center gap-2 text-slate-300 text-[10px] md:text-[11px] font-medium">
-            <CarFront size={14} className="text-emerald-400 shrink-0" />
+        {/* Info Pills */}
+        <div className="flex flex-col gap-2 w-full text-left">
+          <div className="flex items-center gap-2.5 text-slate-600 text-xs font-medium bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+            <CarFront size={14} className="text-emerald-500 shrink-0" />
             <span className="truncate">Exp: {driver.experience}</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-300 text-[10px] md:text-[11px] font-medium">
-            <FileBadge size={14} className="text-purple-400 shrink-0" />
+          <div className="flex items-center gap-2.5 text-slate-600 text-xs font-medium bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+            <FileBadge size={14} className="text-purple-500 shrink-0" />
             <span className="truncate">{driver.license}</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-300 text-[10px] md:text-[11px] font-medium">
-            <Languages size={14} className="text-amber-400 shrink-0" />
+          <div className="flex items-center gap-2.5 text-slate-600 text-xs font-medium bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+            <Languages size={14} className="text-amber-500 shrink-0" />
             <span className="truncate">{driver.languages}</span>
           </div>
         </div>
-
-        <a
-          href={getWhatsAppLink(driver)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EBE5C] text-white py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-[#25D366]/20 active:scale-95 pointer-events-auto"
-        >
-          <MessageCircle size={16} /> Book Driver
-        </a>
       </div>
+
+      {/* Call to Action */}
+      <a
+        href={getWhatsAppLink(driver)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="w-full flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EBE5C] text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md shadow-[#25D366]/20 active:scale-95 mt-auto"
+      >
+        <MessageCircle size={18} /> Book Driver
+      </a>
     </div>
   );
 };
@@ -188,7 +191,7 @@ const AutoDraggableRow = ({ items, slideDirection = "left" }) => {
       <div className="absolute top-0 left-0 w-12 md:w-32 h-full bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none" />
       <div className="absolute top-0 right-0 w-12 md:w-32 h-full bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none" />
 
-      <div ref={trackRef} className="flex w-max cursor-grab">
+      <div ref={trackRef} className="flex w-max cursor-grab pb-4 pt-2">
         <div ref={halfRef} className="flex gap-4 md:gap-6 pr-4 md:pr-6">
           {paddedItems.map((driver, idx) => (
             <DriverCard key={`half1-${driver.id}-${idx}`} driver={driver} />
@@ -295,7 +298,7 @@ export default function DriverRoster() {
           <p className="text-slate-500 font-bold">Driver roster is currently being updated.</p>
         </div>
       ) : (
-        <div className="w-full flex flex-col gap-2 md:gap-4 min-h-[360px]">
+        <div className="w-full flex flex-col gap-2 md:gap-4 min-h-[420px]">
           {searchQuery.trim() !== "" ? (
             <>
               {filteredDrivers.length === 0 ? (

@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
 import { db } from "../firebase"; 
-import { ref, onValue, set, push, get, increment, update, remove, serverTimestamp } from "firebase/database";
+import { ref, onValue, set, push, get, update, remove, onDisconnect } from "firebase/database";
 import { Activity, Users, Globe } from "lucide-react";
-
-let hasCountedThisSession = false;
 
 function AnimatedNumber({ value }) {
   const spring = useSpring(0, { mass: 0.8, stiffness: 75, damping: 15 });
@@ -25,84 +23,87 @@ export default function LiveStats() {
     const statsRef = ref(db, "site_stats");
 
     // ==========================================
-    // 1. BULLETPROOF HEARTBEAT SYSTEM (Live Viewers)
+    // 1. LIVE VIEWERS (Self-Cleaning Version)
     // ==========================================
-    
-    // Create a unique ID for this specific browser session
     const mySessionRef = push(liveViewersRef);
-    let heartbeatInterval;
+    
+    // Automatically delete this session from Firebase if the user closes the tab
+    onDisconnect(mySessionRef).remove(); 
 
-    const startHeartbeat = async () => {
-      // 1. Initial Ping
-      await set(mySessionRef, serverTimestamp());
-
-      // 2. Ping the server every 10 seconds to say "I'm still here!"
-      heartbeatInterval = setInterval(() => {
-        set(mySessionRef, serverTimestamp());
+    const startHeartbeat = () => {
+      set(mySessionRef, Date.now());
+      return setInterval(() => {
+        set(mySessionRef, Date.now());
       }, 10000);
     };
 
-    startHeartbeat();
+    const heartbeatInterval = startHeartbeat();
 
-    // 3. Listen to all viewers and filter out the dead ones
     const unsubscribeLive = onValue(liveViewersRef, (snap) => {
       const allUsers = snap.val();
       if (!allUsers) {
-        setStats((prev) => ({ ...prev, live: 0 }));
+        setStats((prev) => ({ ...prev, live: 1 })); 
         return;
       }
 
       const now = Date.now();
       let activeCount = 0;
-      const cutoffTime = now - 20000; // 20 seconds. If no ping in 20s, they are dead.
+      const cutoffTime = now - 90000; 
 
-      // Check everyone's last heartbeat
-      Object.entries(allUsers).forEach(([key, timestamp]) => {
-        // If the timestamp is valid and newer than 20 seconds ago, count them.
+      Object.values(allUsers).forEach((timestamp) => {
         if (typeof timestamp === 'number' && timestamp > cutoffTime) {
           activeCount++;
-        } else {
-          // Optional Cleanup: Delete dead ghost sessions from the database
-          if (typeof timestamp === 'number' && timestamp <= cutoffTime) {
-              remove(ref(db, `live_viewers/${key}`));
-          }
         }
       });
 
-      // Ensure we always show at least 1 viewer (the person looking at it)
       setStats((prev) => ({ ...prev, live: Math.max(1, activeCount) }));
     });
 
-
     // ==========================================
-    // 2. DAILY & TOTAL VISITORS LOGIC
+    // 2. DAILY & TOTAL VISITORS (Self-Healing Version)
     // ==========================================
     const handleVisitStats = async () => {
-      if (hasCountedThisSession) return;
-      hasCountedThisSession = true;
+      const now = new Date();
+      const todayDate = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, '0') + "-" + String(now.getDate()).padStart(2, '0');
+      
+      const alreadyVisitedToday = localStorage.getItem("vbr_last_visit") === todayDate;
 
-      const todayDate = new Date().toISOString().split('T')[0];
+      try {
+        const snapshot = await get(statsRef);
+        const data = snapshot.val();
 
-      if (localStorage.getItem("vbr_last_visit") === todayDate) return;
-      localStorage.setItem("vbr_last_visit", todayDate);
+        // SCENARIO 1: Database folder is completely missing
+        if (!data) {
+          localStorage.setItem("vbr_last_visit", todayDate);
+          await set(statsRef, {
+            today_visitors: 1,
+            total_visitors: 1,
+            last_reset: todayDate
+          });
+          return;
+        }
 
-      const snapshot = await get(statsRef);
-      const data = snapshot.val() || { today_visitors: 0, total_visitors: 0, last_reset: todayDate };
+        // SCENARIO 2: It is a new day
+        if (data.last_reset !== todayDate) {
+          localStorage.setItem("vbr_last_visit", todayDate);
+          await update(statsRef, {
+            today_visitors: 1,
+            total_visitors: (data.total_visitors || 0) + 1,
+            last_reset: todayDate
+          });
+          return;
+        }
 
-      let newTodayCount = data.today_visitors;
-
-      if (data.last_reset !== todayDate) {
-        newTodayCount = 1; 
-        await update(statsRef, {
-          today_visitors: newTodayCount,
-          total_visitors: increment(1),
-          last_reset: todayDate
-        });
-      } else {
-        await update(statsRef, {
-          today_visitors: increment(1),
-          total_visitors: increment(1)
-        });
+        // SCENARIO 3: Same day, but brand new visitor
+        if (!alreadyVisitedToday) {
+          localStorage.setItem("vbr_last_visit", todayDate);
+          await update(statsRef, {
+            today_visitors: (data.today_visitors || 0) + 1,
+            total_visitors: (data.total_visitors || 0) + 1
+          });
+        }
+      } catch (error) {
+        console.error("Firebase stats error:", error);
       }
     };
 
@@ -123,10 +124,10 @@ export default function LiveStats() {
     // 3. CLEANUP PHASE
     // ==========================================
     return () => {
-      clearInterval(heartbeatInterval); // Stop sending heartbeats
-      unsubscribeLive(); // Stop listening
+      clearInterval(heartbeatInterval); 
+      unsubscribeLive(); 
       unsubscribeStats();
-      remove(mySessionRef); // Immediately delete this session on unmount
+      remove(mySessionRef); 
     };
   }, []);
 
